@@ -1,0 +1,3269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gitanjali Restaurant Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        .sidebar {
+            height: 100vh;
+            position: fixed;
+            transition: transform 0.3s ease;
+            z-index: 40;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0 !important;
+            }
+        }
+
+        .chat-widget {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .loading {
+            display: inline-block;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .food-card:hover {
+            transform: translateY(-5px);
+            transition: transform 0.3s ease;
+        }
+        
+        .page-content {
+            display: none;
+        }
+        
+        .page-content.active {
+            display: block;
+        }
+
+        /* Payment success animation */
+        @keyframes checkmark {
+            0% {
+                stroke-dashoffset: 100;
+            }
+            100% {
+                stroke-dashoffset: 0;
+            }
+        }
+        .checkmark {
+            stroke-dasharray: 100;
+            stroke-dashoffset: 100;
+            animation: checkmark 1s ease-in-out forwards;
+        }
+        .notification-dot {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            height: 12px;
+            width: 12px;
+            background-color: red;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Mobile Menu Button -->
+    <button id="menuBtn" class="lg:hidden fixed top-4 left-4 z-50 bg-black text-white p-2 rounded">
+        <i class="bi bi-list text-2xl"></i>
+    </button>
+
+    <!-- Sidebar -->
+    <nav class="sidebar bg-black text-white w-64 p-6">
+        <div class="flex items-center mb-8">
+            <h1 class="text-2xl font-bold">GITANJALI</h1>
+        </div>
+
+        <div class="space-y-4">
+            <a href="#" data-page="dashboard" class="nav-link flex items-center space-x-3 p-3 rounded bg-gray-800">
+                <i class="bi bi-house-door"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="#" data-page="orders" class="nav-link flex items-center space-x-3 p-3 rounded hover:bg-gray-800 relative">
+                <i class="bi bi-cart"></i>
+                <span>Orders</span>
+                <span class="notification-dot" id="orderNotification" style="display: none;"></span>
+            </a>
+            <a href="#" data-page="menu" class="nav-link flex items-center space-x-3 p-3 rounded hover:bg-gray-800">
+                <i class="bi bi-menu-button-wide"></i>
+                <span>Menu</span>
+            </a>
+            <a href="#" data-page="reservations" class="nav-link flex items-center space-x-3 p-3 rounded hover:bg-gray-800">
+                <i class="bi bi-calendar-check"></i>
+                <span>Reservations</span>
+            </a>
+            <a href="#" data-page="staff" class="nav-link flex items-center space-x-3 p-3 rounded hover:bg-gray-800">
+                <i class="bi bi-people"></i>
+                <span>Staff</span>
+            </a>
+            <a href="#" data-page="settings" class="nav-link flex items-center space-x-3 p-3 rounded hover:bg-gray-800">
+                <i class="bi bi-gear"></i>
+                <span>Settings</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="lg:ml-64 p-6 main-content">
+        <!-- Logout Button -->
+        <div class="flex justify-end mb-8">
+            <div class="flex items-center space-x-3">
+                <div class="text-right hidden sm:block">
+                    <p class="font-medium" id="currentUserDisplay">Admin User</p>
+                    <p class="text-sm text-gray-500">Manager</p>
+                </div>
+                <button id="cartBtn" class="bg-blue-500 text-white p-2 rounded-full mr-2 relative">
+                    <i class="bi bi-cart"></i>
+                    <span id="cartCount" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">0</span>
+                </button>
+                <button id="logoutBtn" class="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition duration-300">
+                    Logout
+                </button>
+            </div>
+        </div>
+
+        <!-- Dashboard Page -->
+        <div id="dashboardPage" class="page-content active">
+            <!-- Logo -->
+            <div class="flex justify-center mb-8">
+                <img src="https://firebasestorage.googleapis.com/v0/b/widecanvas-d0dd4.appspot.com/o/additional-images%2FChatGPT_Image_Apr_17__2025__01_38_11_PM-removebg-preview.png?alt=media&token=e4b2f9d0-e42b-41f8-a564-2257b2c307ab" 
+                    alt="Gitanjali Logo" 
+                    class="w-32 h-32 object-contain">
+            </div>
+
+            <h1 class="text-4xl font-bold mb-12 text-center">Welcome to Gitanjali Restaurant</h1>
+
+            <!-- Dashboard Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+                <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition duration-300">
+                    <div class="text-5xl font-bold">120</div>
+                    <div class="text-gray-600 mt-2">Total Orders</div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition duration-300">
+                    <div class="text-5xl font-bold">15</div>
+                    <div class="text-gray-600 mt-2">Active Tables</div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition duration-300">
+                    <div class="text-5xl font-bold">₹8,500</div>
+                    <div class="text-gray-600 mt-2">Revenue Today</div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition duration-300">
+                    <div class="text-5xl font-bold text-red-500">7</div>
+                    <div class="text-red-500 mt-2">Pending Orders</div>
+                </div>
+            </div>
+
+            <!-- Food Menu Section -->
+            <h2 class="text-3xl font-bold mb-6">Our Popular Dishes</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Food Item 1 -->
+                <div class="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition duration-300 food-card">
+                    <img src="https://images.unsplash.com/photo-1631515243349-e0cb75fb8d3a?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" 
+                        alt="Butter Chicken" 
+                        class="w-full h-48 object-cover">
+                    <div class="p-4">
+                        <h3 class="text-xl font-semibold mb-2">Butter Chicken</h3>
+                        <p class="text-gray-600 mb-3">Tender chicken cooked in a creamy tomato sauce</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xl font-bold text-green-600">₹320</span>
+                            <button class="add-to-order bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition">Add to Order</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Food Item 2 -->
+                <div class="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition duration-300 food-card">
+                    <img src="https://images.unsplash.com/photo-1630409351217-c3eb49e6f1b2?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" 
+                        alt="Paneer Tikka Masala" 
+                        class="w-full h-48 object-cover">
+                    <div class="p-4">
+                        <h3 class="text-xl font-semibold mb-2">Paneer Tikka Masala</h3>
+                        <p class="text-gray-600 mb-3">Grilled paneer cubes in a spicy tomato gravy</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xl font-bold text-green-600">₹280</span>
+                            <button class="add-to-order bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition">Add to Order</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Food Item 3 -->
+                <div class="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition duration-300 food-card">
+                    <img src="https://images.unsplash.com/photo-1589302168068-964664d93dc0?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" 
+                        alt="Biryani" 
+                        class="w-full h-48 object-cover">
+                    <div class="p-4">
+                        <h3 class="text-xl font-semibold mb-2">Chicken Biryani</h3>
+                        <p class="text-gray-600 mb-3">Fragrant rice layered with spiced chicken</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xl font-bold text-green-600">₹350</span>
+                            <button class="add-to-order bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition">Add to Order</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Food Item 4 -->
+                <div class="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition duration-300 food-card">
+                    <img src="https://images.unsplash.com/photo-1627308595171-d1b5d95d20f9?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" 
+                        alt="Naan" 
+                        class="w-full h-48 object-cover">
+                    <div class="p-4">
+                        <h3 class="text-xl font-semibold mb-2">Butter Naan</h3>
+                        <p class="text-gray-600 mb-3">Freshly baked soft bread with butter</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xl font-bold text-green-600">₹60</span>
+                            <button class="add-to-order bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition">Add to Order</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Food Item 5 -->
+                <div class="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition duration-300 food-card">
+                    <img src="https://images.unsplash.com/photo-1567188040759-fb8a254b6128?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" 
+                        alt="Dal Makhani" 
+                        class="w-full h-48 object-cover">
+                    <div class="p-4">
+                        <h3 class="text-xl font-semibold mb-2">Dal Makhani</h3>
+                        <p class="text-gray-600 mb-3">Creamy black lentils simmered overnight</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xl font-bold text-green-600">₹220</span>
+                            <button class="add-to-order bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition">Add to Order</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Food Item 6 -->
+                <div class="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition duration-300 food-card">
+                    <img src="https://images.unsplash.com/photo-1605197595234-3adfa9738235?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" 
+                        alt="Gulab Jamun" 
+                        class="w-full h-48 object-cover">
+                    <div class="p-4">
+                        <h3 class="text-xl font-semibold mb-2">Gulab Jamun</h3>
+                        <p class="text-gray-600 mb-3">Soft milk dumplings in sweet syrup</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xl font-bold text-green-600">₹120</span>
+                            <button class="add-to-order bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition">Add to Order</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Additional Food Items -->
+                <div class="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition duration-300 food-card">
+                    <img src="https://images.unsplash.com/photo-1585937421612-70a008356c36?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" 
+                        alt="Palak Paneer" 
+                        class="w-full h-48 object-cover">
+                    <div class="p-4">
+                        <h3 class="text-xl font-semibold mb-2">Palak Paneer</h3>
+                        <p class="text-gray-600 mb-3">Cottage cheese cubes in spinach gravy</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xl font-bold text-green-600">₹290</span>
+                            <button class="add-to-order bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition">Add to Order</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition duration-300 food-card">
+                    <img src="https://images.unsplash.com/photo-1603496987351-f84a3ba5ec85?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" 
+                        alt="Malai Kofta" 
+                        class="w-full h-48 object-cover">
+                    <div class="p-4">
+                        <h3 class="text-xl font-semibold mb-2">Malai Kofta</h3>
+                        <p class="text-gray-600 mb-3">Deep fried potato and paneer balls in rich gravy</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xl font-bold text-green-600">₹310</span>
+                            <button class="add-to-order bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition">Add to Order</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition duration-300 food-card">
+                    <img src="https://images.unsplash.com/photo-1596797038530-2c107aa4a186?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" 
+                        alt="Masala Dosa" 
+                        class="w-full h-48 object-cover">
+                    <div class="p-4">
+                        <h3 class="text-xl font-semibold mb-2">Masala Dosa</h3>
+                        <p class="text-gray-600 mb-3">Crispy rice crepe with spiced potato filling</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xl font-bold text-green-600">₹180</span>
+                            <button class="add-to-order bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition">Add to Order</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Orders Page -->
+        <div id="ordersPage" class="page-content">
+            <h1 class="text-3xl font-bold mb-6">Manage Orders</h1>
+            
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold">Active Orders</h2>
+                    <div class="flex space-x-2">
+                        <button id="newOrderBtn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition">New Order</button>
+                        <select class="border rounded px-4 py-2" id="orderFilterSelect">
+                            <option value="all">Filter by Status</option>
+                            <option value="pending">Pending</option>
+                            <option value="preparing">Preparing</option>
+                            <option value="ready">Ready</option>
+                            <option value="delivered">Delivered</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white">
+                        <thead>
+                            <tr class="bg-gray-100 text-gray-700 text-left">
+                                <th class="py-3 px-4 font-semibold">Order ID</th>
+                                <th class="py-3 px-4 font-semibold">Table</th>
+                                <th class="py-3 px-4 font-semibold">Items</th>
+                                <th class="py-3 px-4 font-semibold">Amount</th>
+                                <th class="py-3 px-4 font-semibold">Status</th>
+                                <th class="py-3 px-4 font-semibold">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orderTableBody">
+                            <tr class="border-t order-row" data-status="preparing">
+                                <td class="py-3 px-4">#ORD-001</td>
+                                <td class="py-3 px-4">Table 5</td>
+                                <td class="py-3 px-4">Butter Chicken, Naan (2)</td>
+                                <td class="py-3 px-4">₹440</td>
+                                <td class="py-3 px-4"><span class="bg-yellow-200 text-yellow-800 px-2 py-1 rounded text-sm">Preparing</span></td>
+                                <td class="py-3 px-4">
+                                    <div class="flex space-x-2">
+                                        <button class="text-blue-500 hover:text-blue-700 view-order-btn"><i class="bi bi-eye"></i></button>
+                                        <button class="text-green-500 hover:text-green-700 complete-order-btn"><i class="bi bi-check2-circle"></i></button>
+                                        <button class="text-red-500 hover:text-red-700 cancel-order-btn"><i class="bi bi-x-circle"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="border-t order-row" data-status="pending">
+                                <td class="py-3 px-4">#ORD-002</td>
+                                <td class="py-3 px-4">Table 3</td>
+                                <td class="py-3 px-4">Paneer Tikka, Dal Makhani, Naan (3)</td>
+                                <td class="py-3 px-4">₹680</td>
+                                <td class="py-3 px-4"><span class="bg-red-200 text-red-800 px-2 py-1 rounded text-sm">Pending</span></td>
+                                <td class="py-3 px-4">
+                                    <div class="flex space-x-2">
+                                        <button class="text-blue-500 hover:text-blue-700 view-order-btn"><i class="bi bi-eye"></i></button>
+                                        <button class="text-green-500 hover:text-green-700 complete-order-btn"><i class="bi bi-check2-circle"></i></button>
+                                        <button class="text-red-500 hover:text-red-700 cancel-order-btn"><i class="bi bi-x-circle"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="border-t order-row" data-status="ready">
+                                <td class="py-3 px-4">#ORD-003</td>
+                                <td class="py-3 px-4">Table 8</td>
+                                <td class="py-3 px-4">Chicken Biryani, Gulab Jamun (2)</td>
+                                <td class="py-3 px-4">₹590</td>
+                                <td class="py-3 px-4"><span class="bg-green-200 text-green-800 px-2 py-1 rounded text-sm">Ready</span></td>
+                                <td class="py-3 px-4">
+                                    <div class="flex space-x-2">
+                                        <button class="text-blue-500 hover:text-blue-700 view-order-btn"><i class="bi bi-eye"></i></button>
+                                        <button class="text-green-500 hover:text-green-700 complete-order-btn"><i class="bi bi-check2-circle"></i></button>
+                                        <button class="text-red-500 hover:text-red-700 cancel-order-btn"><i class="bi bi-x-circle"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="border-t order-row" data-status="delivered">
+                                <td class="py-3 px-4">#ORD-004</td>
+                                <td class="py-3 px-4">Takeaway</td>
+                                <td class="py-3 px-4">Butter Chicken, Dal Makhani, Naan (4)</td>
+                                <td class="py-3 px-4">₹780</td>
+                                <td class="py-3 px-4"><span class="bg-blue-200 text-blue-800 px-2 py-1 rounded text-sm">Delivered</span></td>
+                                <td class="py-3 px-4">
+                                    <div class="flex space-x-2">
+                                        <button class="text-blue-500 hover:text-blue-700 view-order-btn"><i class="bi bi-eye"></i></button>
+                                        <button class="text-gray-500 hover:text-gray-700 print-bill-btn"><i class="bi bi-printer"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-6 flex justify-between items-center">
+                    <div class="text-gray-600">Showing <span id="visibleOrderCount">4</span> of <span id="totalOrderCount">24</span> orders</div>
+                    <div class="flex space-x-2">
+                        <button id="prevOrdersBtn" class="bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded transition">Previous</button>
+                        <button id="nextOrdersBtn" class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition">Next</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Order Summary -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-bold mb-4">Order Summary</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                        <h3 class="text-lg font-semibold mb-2">Today's Orders</h3>
+                        <div class="text-3xl font-bold text-green-600">32</div>
+                        <div class="text-green-500 mt-2 flex items-center">
+                            <i class="bi bi-arrow-up-right"></i>
+                            <span class="ml-1">+15% from yesterday</span>
+                        </div>
+                    </div>
+                    <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                        <h3 class="text-lg font-semibold mb-2">Average Order Value</h3>
+                        <div class="text-3xl font-bold text-blue-600">₹650</div>
+                        <div class="text-blue-500 mt-2 flex items-center">
+                            <i class="bi bi-arrow-up-right"></i>
+                            <span class="ml-1">+5% from last week</span>
+                        </div>
+                    </div>
+                    <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                        <h3 class="text-lg font-semibold mb-2">Pending Orders</h3>
+                        <div class="text-3xl font-bold text-purple-600">7</div>
+                        <button id="processAllOrdersBtn" class="mt-2 bg-purple-500 text-white px-4 py-1 rounded hover:bg-purple-600 transition">Process All</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Menu Page -->
+        <div id="menuPage" class="page-content">
+            <h1 class="text-3xl font-bold mb-6">Menu Management</h1>
+            
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold">Menu Items</h2>
+                    <div class="flex space-x-2">
+                        <button id="addMenuItemBtn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition">Add New Item</button>
+                        <select class="border rounded px-4 py-2" id="menuCategoryFilter">
+                            <option value="all">All Categories</option>
+                            <option value="starters">Starters</option>
+                            <option value="mains">Main Course</option>
+                            <option value="desserts">Desserts</option>
+                            <option value="beverages">Beverages</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white">
+                        <thead>
+                            <tr class="bg-gray-100 text-gray-700 text-left">
+                                <th class="py-3 px-4 font-semibold">Item</th>
+                                <th class="py-3 px-4 font-semibold">Category</th>
+                                <th class="py-3 px-4 font-semibold">Price</th>
+                                <th class="py-3 px-4 font-semibold">Availability</th>
+                                <th class="py-3 px-4 font-semibold">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="menuItemsTableBody">
+                            <tr class="border-t menu-item" data-category="mains">
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center">
+                                        <img src="https://images.unsplash.com/photo-1631515243349-e0cb75fb8d3a?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" class="w-12 h-12 rounded object-cover mr-3">
+                                        <div>
+                                            <div class="font-medium">Butter Chicken</div>
+                                            <div class="text-sm text-gray-500">Tender chicken in creamy sauce</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">Main Course</td>
+                                <td class="py-3 px-4">₹320</td>
+                                <td class="py-3 px-4">
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" value="" class="sr-only peer menu-item-toggle" checked>
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                                    </label>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="flex space-x-2">
+                                        <button class="text-blue-500 hover:text-blue-700 edit-menu-item"><i class="bi bi-pencil"></i></button>
+                                        <button class="text-red-500 hover:text-red-700 delete-menu-item"><i class="bi bi-trash"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="border-t menu-item" data-category="mains">
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center">
+                                        <img src="https://images.unsplash.com/photo-1630409351217-c3eb49e6f1b2?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" class="w-12 h-12 rounded object-cover mr-3">
+                                        <div>
+                                            <div class="font-medium">Paneer Tikka Masala</div>
+                                            <div class="text-sm text-gray-500">Grilled paneer in spicy gravy</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">Main Course</td>
+                                <td class="py-3 px-4">₹280</td>
+                                <td class="py-3 px-4">
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" value="" class="sr-only peer menu-item-toggle" checked>
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                                    </label>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="flex space-x-2">
+                                        <button class="text-blue-500 hover:text-blue-700 edit-menu-item"><i class="bi bi-pencil"></i></button>
+                                        <button class="text-red-500 hover:text-red-700 delete-menu-item"><i class="bi bi-trash"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="border-t menu-item" data-category="mains">
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center">
+                                        <img src="https://images.unsplash.com/photo-1589302168068-964664d93dc0?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" class="w-12 h-12 rounded object-cover mr-3">
+                                        <div>
+                                            <div class="font-medium">Chicken Biryani</div>
+                                            <div class="text-sm text-gray-500">Fragrant rice with spiced chicken</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">Main Course</td>
+                                <td class="py-3 px-4">₹350</td>
+                                <td class="py-3 px-4">
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" value="" class="sr-only peer menu-item-toggle" checked>
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                                    </label>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="flex space-x-2">
+                                        <button class="text-blue-500 hover:text-blue-700 edit-menu-item"><i class="bi bi-pencil"></i></button>
+                                        <button class="text-red-500 hover:text-red-700 delete-menu-item"><i class="bi bi-trash"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="border-t menu-item" data-category="desserts">
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center">
+                                        <img src="https://images.unsplash.com/photo-1605197595234-3adfa9738235?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" class="w-12 h-12 rounded object-cover mr-3">
+                                        <div>
+                                            <div class="font-medium">Gulab Jamun</div>
+                                            <div class="text-sm text-gray-500">Soft milk dumplings in sweet syrup</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">Desserts</td>
+                                <td class="py-3 px-4">₹120</td>
+                                <td class="py-3 px-4">
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" value="" class="sr-only peer menu-item-toggle" checked>
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                                    </label>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="flex space-x-2">
+                                        <button class="text-blue-500 hover:text-blue-700 edit-menu-item"><i class="bi bi-pencil"></i></button>
+                                        <button class="text-red-500 hover:text-red-700 delete-menu-item"><i class="bi bi-trash"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-6 flex justify-between items-center">
+                    <div class="text-gray-600">Showing <span id="visibleMenuCount">4</span> of <span id="totalMenuCount">24</span> menu items</div>
+                    <div class="flex space-x-2">
+                        <button id="prevMenuBtn" class="bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded transition">Previous</button>
+                        <button id="nextMenuBtn" class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition">Next</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Menu Categories -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-bold mb-4">Menu Categories</h2>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center p-2 border-b">
+                            <span>Starters</span>
+                            <button class="edit-category text-blue-500 hover:text-blue-700"><i class="bi bi-pencil"></i></button>
+                        </div>
+                        <div class="flex justify-between items-center p-2 border-b">
+                            <span>Main Course</span>
+                            <button class="edit-category text-blue-500 hover:text-blue-700"><i class="bi bi-pencil"></i></button>
+                        </div>
+                        <div class="flex justify-between items-center p-2 border-b">
+                            <span>Desserts</span>
+                            <button class="edit-category text-blue-500 hover:text-blue-700"><i class="bi bi-pencil"></i></button>
+                        </div>
+                        <div class="flex justify-between items-center p-2 border-b">
+                            <span>Beverages</span>
+                            <button class="edit-category text-blue-500 hover:text-blue-700"><i class="bi bi-pencil"></i></button>
+                        </div>
+                        <button id="addCategoryBtn" class="w-full bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition mt-4">Add Category</button>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-bold mb-4">Specials Today</h2>
+                    <div class="space-y-4">
+                        <div class="flex items-center border-b pb-3">
+                            <img src="https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" class="w-14 h-14 rounded object-cover mr-3">
+                            <div>
+                                <div class="font-medium">Rogan Josh</div>
+                                <div class="text-green-600 font-bold">₹380</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center border-b pb-3">
+                            <img src="https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" class="w-14 h-14 rounded object-cover mr-3">
+                            <div>
+                                <div class="font-medium">Malai Kofta</div>
+                                <div class="text-green-600 font-bold">₹300</div>
+                            </div>
+                        </div>
+                        <button id="updateSpecialsBtn" class="w-full bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 transition mt-3">Update Specials</button>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-bold mb-4">Menu Statistics</h2>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span>Total Items</span>
+                            <span class="font-bold">48</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span>Available Items</span>
+                            <span class="font-bold">43</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span>Top Selling</span>
+                            <span class="font-bold">Butter Chicken</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span>Worst Selling</span>
+                            <span class="font-bold">Vegetable Salad</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reservations Page -->
+        <div id="reservationsPage" class="page-content">
+            <h1 class="text-3xl font-bold mb-6">Reservations Management</h1>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-xl font-bold">Today's Reservations</h2>
+                            <button id="newReservationBtn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition">New Reservation</button>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full bg-white">
+                                <thead>
+                                    <tr class="bg-gray-100 text-gray-700 text-left">
+                                        <th class="py-3 px-4 font-semibold">Name</th>
+                                        <th class="py-3 px-4 font-semibold">Time</th>
+                                        <th class="py-3 px-4 font-semibold">Guests</th>
+                                        <th class="py-3 px-4 font-semibold">Table</th>
+                                        <th class="py-3 px-4 font-semibold">Status</th>
+                                        <th class="py-3 px-4 font-semibold">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reservationsTableBody">
+                                    <tr class="border-t reservation-row" data-status="confirmed">
+                                        <td class="py-3 px-4">Rahul Sharma</td>
+                                        <td class="py-3 px-4">12:30 PM</td>
+                                        <td class="py-3 px-4">4</td>
+                                        <td class="py-3 px-4">Table 8</td>
+                                        <td class="py-3 px-4"><span class="bg-green-200 text-green-800 px-2 py-1 rounded text-sm">Confirmed</span></td>
+                                        <td class="py-3 px-4">
+                                            <div class="flex space-x-2">
+                                                <button class="text-blue-500 hover:text-blue-700 edit-reservation-btn"><i class="bi bi-pencil"></i></button>
+                                                <button class="text-green-500 hover:text-green-700 confirm-reservation-btn"><i class="bi bi-check2"></i></button>
+                                                <button class="text-red-500 hover:text-red-700 cancel-reservation-btn"><i class="bi bi-x"></i></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr class="border-t reservation-row" data-status="pending">
+                                        <td class="py-3 px-4">Priya Patel</td>
+                                        <td class="py-3 px-4">1:00 PM</td>
+                                        <td class="py-3 px-4">2</td>
+                                        <td class="py-3 px-4">Table 3</td>
+                                        <td class="py-3 px-4"><span class="bg-yellow-200 text-yellow-800 px-2 py-1 rounded text-sm">Pending</span></td>
+                                        <td class="py-3 px-4">
+                                            <div class="flex space-x-2">
+                                                <button class="text-blue-500 hover:text-blue-700 edit-reservation-btn"><i class="bi bi-pencil"></i></button>
+                                                <button class="text-green-500 hover:text-green-700 confirm-reservation-btn"><i class="bi bi-check2"></i></button>
+                                                <button class="text-red-500 hover:text-red-700 cancel-reservation-btn"><i class="bi bi-x"></i></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr class="border-t reservation-row" data-status="confirmed">
+                                        <td class="py-3 px-4">Amit Singh</td>
+                                        <td class="py-3 px-4">7:30 PM</td>
+                                        <td class="py-3 px-4">6</td>
+                                        <td class="py-3 px-4">Table 12</td>
+                                        <td class="py-3 px-4"><span class="bg-green-200 text-green-800 px-2 py-1 rounded text-sm">Confirmed</span></td>
+                                        <td class="py-3 px-4">
+                                            <div class="flex space-x-2">
+                                                <button class="text-blue-500 hover:text-blue-700 edit-reservation-btn"><i class="bi bi-pencil"></i></button>
+                                                <button class="text-green-500 hover:text-green-700 confirm-reservation-btn"><i class="bi bi-check2"></i></button>
+                                                <button class="text-red-500 hover:text-red-700 cancel-reservation-btn"><i class="bi bi-x"></i></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr class="border-t reservation-row" data-status="cancelled">
+                                        <td class="py-3 px-4">Neha Gupta</td>
+                                        <td class="py-3 px-4">8:00 PM</td>
+                                        <td class="py-3 px-4">3</td>
+                                        <td class="py-3 px-4">Table 5</td>
+                                        <td class="py-3 px-4"><span class="bg-red-200 text-red-800 px-2 py-1 rounded text-sm">Cancelled</span></td>
+                                        <td class="py-3 px-4">
+                                            <div class="flex space-x-2">
+                                                <button class="text-blue-500 hover:text-blue-700 edit-reservation-btn"><i class="bi bi-pencil"></i></button>
+                                                <button class="text-gray-400 cursor-not-allowed"><i class="bi bi-check2"></i></button>
+                                                <button class="text-gray-400 cursor-not-allowed"><i class="bi bi-x"></i></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-bold mb-4">Reservation Calendar</h2>
+                    <div class="mb-4">
+                        <div class="bg-gray-100 p-3 flex justify-between items-center mb-2 rounded">
+                            <button id="prevMonth" class="text-gray-600 hover:text-gray-900"><i class="bi bi-chevron-left"></i></button>
+                            <span class="font-semibold" id="currentMonth">May 2023</span>
+                            <button id="nextMonth" class="text-gray-600 hover:text-gray-900"><i class="bi bi-chevron-right"></i></button>
+                        </div>
+                        <div class="grid grid-cols-7 gap-1 text-center">
+                            <div class="text-xs font-medium text-gray-500 py-1">Sun</div>
+                            <div class="text-xs font-medium text-gray-500 py-1">Mon</div>
+                            <div class="text-xs font-medium text-gray-500 py-1">Tue</div>
+                            <div class="text-xs font-medium text-gray-500 py-1">Wed</div>
+                            <div class="text-xs font-medium text-gray-500 py-1">Thu</div>
+                            <div class="text-xs font-medium text-gray-500 py-1">Fri</div>
+                            <div class="text-xs font-medium text-gray-500 py-1">Sat</div>
+                            
+                            <div class="p-1 text-gray-400 text-sm">30</div>
+                            <div class="p-1 text-sm calendar-day">1</div>
+                            <div class="p-1 text-sm calendar-day">2</div>
+                            <div class="p-1 text-sm calendar-day">3</div>
+                            <div class="p-1 text-sm calendar-day">4</div>
+                            <div class="p-1 text-sm calendar-day">5</div>
+                            <div class="p-1 text-sm calendar-day">6</div>
+                            
+                            <div class="p-1 text-sm calendar-day">7</div>
+                            <div class="p-1 text-sm calendar-day">8</div>
+                            <div class="p-1 text-sm calendar-day">9</div>
+                            <div class="p-1 text-sm calendar-day">10</div>
+                            <div class="p-1 text-sm calendar-day">11</div>
+                            <div class="p-1 text-sm calendar-day relative">
+                                12
+                                <div class="absolute bottom-0 right-0 w-2 h-2 bg-red-500 rounded-full"></div>
+                            </div>
+                            <div class="p-1 text-sm calendar-day">13</div>
+                            
+                            <div class="p-1 text-sm calendar-day">14</div>
+                            <div class="p-1 text-sm calendar-day">15</div>
+                            <div class="p-1 text-sm relative calendar-day">
+                                16
+                                <div class="absolute bottom-0 right-0 w-2 h-2 bg-red-500 rounded-full"></div>
+                            </div>
+                            <div class="p-1 text-sm bg-blue-100 rounded calendar-day" id="currentDay">17</div>
+                            <div class="p-1 text-sm calendar-day">18</div>
+                            <div class="p-1 text-sm calendar-day">19</div>
+                            <div class="p-1 text-sm relative calendar-day">
+                                20
+                                <div class="absolute bottom-0 right-0 w-2 h-2 bg-green-500 rounded-full"></div>
+                            </div>
+                            
+                            <div class="p-1 text-sm calendar-day">21</div>
+                            <div class="p-1 text-sm calendar-day">22</div>
+                            <div class="p-1 text-sm calendar-day">23</div>
+                            <div class="p-1 text-sm calendar-day">24</div>
+                            <div class="p-1 text-sm calendar-day">25</div>
+                            <div class="p-1 text-sm calendar-day">26</div>
+                            <div class="p-1 text-sm calendar-day">27</div>
+                            
+                            <div class="p-1 text-sm calendar-day">28</div>
+                            <div class="p-1 text-sm calendar-day">29</div>
+                            <div class="p-1 text-sm calendar-day">30</div>
+                            <div class="p-1 text-sm calendar-day">31</div>
+                            <div class="p-1 text-gray-400 text-sm">1</div>
+                            <div class="p-1 text-gray-400 text-sm">2</div>
+                            <div class="p-1 text-gray-400 text-sm">3</div>
+                        </div>
+                    </div>
+                    
+                    <h3 class="font-semibold mb-2">Today's Stats</h3>
+                    <div class="space-y-2 mb-4">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Total Reservations</span>
+                            <span class="font-bold">12</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Confirmed</span>
+                            <span class="font-bold">9</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Pending</span>
+                            <span class="font-bold text-yellow-600">2</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Cancelled</span>
+                            <span class="font-bold text-red-600">1</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <button id="viewFullCalendarBtn" class="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">View Full Calendar</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Table Layout -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-bold mb-4">Table Layout</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-4">
+                    <div class="border border-green-500 bg-green-100 p-3 rounded text-center cursor-pointer hover:bg-green-200 transition table-item" data-table="1" data-status="available">
+                        <div class="font-bold">Table 1</div>
+                        <div class="text-sm text-green-600">Available</div>
+                    </div>
+                    <div class="border border-red-500 bg-red-100 p-3 rounded text-center cursor-pointer hover:bg-red-200 transition table-item" data-table="2" data-status="reserved">
+                        <div class="font-bold">Table 2</div>
+                        <div class="text-sm text-red-600">Reserved</div>
+                    </div>
+                    <div class="border border-red-500 bg-red-100 p-3 rounded text-center cursor-pointer hover:bg-red-200 transition table-item" data-table="3" data-status="reserved">
+                        <div class="font-bold">Table 3</div>
+                        <div class="text-sm text-red-600">Reserved</div>
+                    </div>
+                    <div class="border border-yellow-500 bg-yellow-100 p-3 rounded text-center cursor-pointer hover:bg-yellow-200 transition table-item" data-table="4" data-status="occupied">
+                        <div class="font-bold">Table 4</div>
+                        <div class="text-sm text-yellow-600">Occupied</div>
+                    </div>
+                    <div class="border border-red-500 bg-red-100 p-3 rounded text-center cursor-pointer hover:bg-red-200 transition table-item" data-table="5" data-status="reserved">
+                        <div class="font-bold">Table 5</div>
+                        <div class="text-sm text-red-600">Reserved</div>
+                    </div>
+                    <div class="border border-green-500 bg-green-100 p-3 rounded text-center cursor-pointer hover:bg-green-200 transition table-item" data-table="6" data-status="available">
+                        <div class="font-bold">Table 6</div>
+                        <div class="text-sm text-green-600">Available</div>
+                    </div>
+                    <div class="border border-yellow-500 bg-yellow-100 p-3 rounded text-center cursor-pointer hover:bg-yellow-200 transition table-item" data-table="7" data-status="occupied">
+                        <div class="font-bold">Table 7</div>
+                        <div class="text-sm text-yellow-600">Occupied</div>
+                    </div>
+                    <div class="border border-red-500 bg-red-100 p-3 rounded text-center cursor-pointer hover:bg-red-200 transition table-item" data-table="8" data-status="reserved">
+                        <div class="font-bold">Table 8</div>
+                        <div class="text-sm text-red-600">Reserved</div>
+                    </div>
+                    <div class="border border-green-500 bg-green-100 p-3 rounded text-center cursor-pointer hover:bg-green-200 transition table-item" data-table="9" data-status="available">
+                        <div class="font-bold">Table 9</div>
+                        <div class="text-sm text-green-600">Available</div>
+                    </div>
+                    <div class="border border-green-500 bg-green-100 p-3 rounded text-center cursor-pointer hover:bg-green-200 transition table-item" data-table="10" data-status="available">
+                        <div class="font-bold">Table 10</div>
+                        <div class="text-sm text-green-600">Available</div>
+                    </div>
+                    <div class="border border-yellow-500 bg-yellow-100 p-3 rounded text-center cursor-pointer hover:bg-yellow-200 transition table-item" data-table="11" data-status="occupied">
+                        <div class="font-bold">Table 11</div>
+                        <div class="text-sm text-yellow-600">Occupied</div>
+                    </div>
+                    <div class="border border-red-500 bg-red-100 p-3 rounded text-center cursor-pointer hover:bg-red-200 transition table-item" data-table="12" data-status="reserved">
+                        <div class="font-bold">Table 12</div>
+                        <div class="text-sm text-red-600">Reserved</div>
+                    </div>
+                </div>
+                <div class="flex justify-center space-x-6">
+                    <div class="flex items-center">
+                        <div class="w-4 h-4 bg-green-500 rounded-full mr-2"></div>
+                        <span>Available</span>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-4 h-4 bg-red-500 rounded-full mr-2"></div>
+                        <span>Reserved</span>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-4 h-4 bg-yellow-500 rounded-full mr-2"></div>
+                        <span>Occupied</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Staff Page -->
+        <div id="staffPage" class="page-content">
+            <h1 class="text-3xl font-bold mb-6">Staff Management</h1>
+            
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold">Staff Members</h2>
+                    <div class="flex space-x-2">
+                        <button id="addStaffBtn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition">Add Staff</button>
+                        <select class="border rounded px-4 py-2" id="staffRoleFilter">
+                            <option value="all">All Roles</option>
+                            <option value="manager">Manager</option>
+                            <option value="chef">Chef</option>
+                            <option value="waiter">Waiter</option>
+                            <option value="cashier">Cashier</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white">
+                        <thead>
+                            <tr class="bg-gray-100 text-gray-700 text-left">
+                                <th class="py-3 px-4 font-semibold">Employee</th>
+                                <th class="py-3 px-4 font-semibold">Role</th>
+                                <th class="py-3 px-4 font-semibold">Shift</th>
+                                <th class="py-3 px-4 font-semibold">Contact</th>
+                                <th class="py-3 px-4 font-semibold">Status</th>
+                                <th class="py-3 px-4 font-semibold">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="staffTableBody">
+                            <tr class="border-t staff-row" data-role="manager">
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center">
+                                        <img src="https://api.dicebear.com/7.x/initials/svg?seed=VK&backgroundColor=0096c7" class="w-10 h-10 rounded-full mr-3">
+                                        <div>
+                                            <div class="font-medium">Vikram Kumar</div>
+                                            <div class="text-sm text-gray-500">ID: EMP001</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">Manager</td>
+                                <td class="py-3 px-4">9 AM - 6 PM</td>
+                                <td class="py-3 px-4">+91 9876543210</td>
+                                <td class="py-3 px-4"><span class="bg-green-200 text-green-800 px-2 py-1 rounded text-sm">Active</span></td>
+                                <td class="py-3 px-4">
+                                    <div class="flex space-x-2">
+                                        <button class="text-blue-500 hover:text-blue-700 edit-staff-btn"><i class="bi bi-pencil"></i></button>
+                                        <button class="text-red-500 hover:text-red-700 delete-staff-btn"><i class="bi bi-trash"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="border-t staff-row" data-role="chef">
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center">
+                                        <img src="https://api.dicebear.com/7.x/initials/svg?seed=SR&backgroundColor=ff9100" class="w-10 h-10 rounded-full mr-3">
+                                        <div>
+                                            <div class="font-medium">Sanjay Rao</div>
+                                            <div class="text-sm text-gray-500">ID: EMP002</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">Chef</td>
+                                <td class="py-3 px-4">10 AM - 10 PM</td>
+                                <td class="py-3 px-4">+91 8765432109</td>
+                                <td class="py-3 px-4"><span class="bg-green-200 text-green-800 px-2 py-1 rounded text-sm">Active</span></td>
+                                <td class="py-3 px-4">
+                                    <div class="flex space-x-2">
+                                        <button class="text-blue-500 hover:text-blue-700 edit-staff-btn"><i class="bi bi-pencil"></i></button>
+                                        <button class="text-red-500 hover:text-red-700 delete-staff-btn"><i class="bi bi-trash"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="border-t staff-row" data-role="waiter">
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center">
+                                        <img src="https://api.dicebear.com/7.x/initials/svg?seed=NG&backgroundColor=8338ec" class="w-10 h-10 rounded-full mr-3">
+                                        <div>
+                                            <div class="font-medium">Neha Gupta</div>
+                                            <div class="text-sm text-gray-500">ID: EMP003</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">Waiter</td>
+                                <td class="py-3 px-4">5 PM - 11 PM</td>
+                                <td class="py-3 px-4">+91 7654321098</td>
+                                <td class="py-3 px-4"><span class="bg-red-200 text-red-800 px-2 py-1 rounded text-sm">On Leave</span></td>
+                                <td class="py-3 px-4">
+                                    <div class="flex space-x-2">
+                                        <button class="text-blue-500 hover:text-blue-700 edit-staff-btn"><i class="bi bi-pencil"></i></button>
+                                        <button class="text-red-500 hover:text-red-700 delete-staff-btn"><i class="bi bi-trash"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="border-t staff-row" data-role="cashier">
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center">
+                                        <img src="https://api.dicebear.com/7.x/initials/svg?seed=AT&backgroundColor=e76f51" class="w-10 h-10 rounded-full mr-3">
+                                        <div>
+                                            <div class="font-medium">Ankit Tiwari</div>
+                                            <div class="text-sm text-gray-500">ID: EMP004</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">Cashier</td>
+                                <td class="py-3 px-4">10 AM - 8 PM</td>
+                                <td class="py-3 px-4">+91 6543210987</td>
+                                <td class="py-3 px-4"><span class="bg-green-200 text-green-800 px-2 py-1 rounded text-sm">Active</span></td>
+                                <td class="py-3 px-4">
+                                    <div class="flex space-x-2">
+                                        <button class="text-blue-500 hover:text-blue-700 edit-staff-btn"><i class="bi bi-pencil"></i></button>
+                                        <button class="text-red-500 hover:text-red-700 delete-staff-btn"><i class="bi bi-trash"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-6 flex justify-between items-center">
+                    <div class="text-gray-600">Showing <span id="visibleStaffCount">4</span> of <span id="totalStaffCount">15</span> staff members</div>
+                    <div class="flex space-x-2">
+                        <button id="prevStaffBtn" class="bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded transition">Previous</button>
+                        <button id="nextStaffBtn" class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition">Next</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Schedule Calendar -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-bold mb-4">Weekly Schedule</h2>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full">
+                            <thead>
+                                <tr class="bg-gray-100">
+                                    <th class="p-2 text-left">Name</th>
+                                    <th class="p-2 text-center">Mon</th>
+                                    <th class="p-2 text-center">Tue</th>
+                                    <th class="p-2 text-center">Wed</th>
+                                    <th class="p-2 text-center">Thu</th>
+                                    <th class="p-2 text-center">Fri</th>
+                                    <th class="p-2 text-center">Sat</th>
+                                    <th class="p-2 text-center">Sun</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-t">
+                                    <td class="p-2">Vikram K.</td>
+                                    <td class="p-2 text-center bg-blue-100 schedule-cell" data-day="mon" data-staff="1">✓</td>
+                                    <td class="p-2 text-center bg-blue-100 schedule-cell" data-day="tue" data-staff="1">✓</td>
+                                    <td class="p-2 text-center bg-blue-100 schedule-cell" data-day="wed" data-staff="1">✓</td>
+                                    <td class="p-2 text-center bg-blue-100 schedule-cell" data-day="thu" data-staff="1">✓</td>
+                                    <td class="p-2 text-center bg-blue-100 schedule-cell" data-day="fri" data-staff="1">✓</td>
+                                    <td class="p-2 text-center schedule-cell" data-day="sat" data-staff="1">-</td>
+                                    <td class="p-2 text-center schedule-cell" data-day="sun" data-staff="1">-</td>
+                                </tr>
+                                <tr class="border-t">
+                                    <td class="p-2">Sanjay R.</td>
+                                    <td class="p-2 text-center schedule-cell" data-day="mon" data-staff="2">-</td>
+                                    <td class="p-2 text-center bg-blue-100 schedule-cell" data-day="tue" data-staff="2">✓</td>
+                                    <td class="p-2 text-center bg-blue-100 schedule-cell" data-day="wed" data-staff="2">✓</td>
+                                    <td class="p-2 text-center bg-blue-100 schedule-cell" data-day="thu" data-staff="2">✓</td>
+                                    <td class="p-2 text-center bg-blue-100 schedule-cell" data-day="fri" data-staff="2">✓</td>
+                                    <td class="p-2 text-center bg-blue-100 schedule-cell" data-day="sat" data-staff="2">✓</td>
+                                    <td class="p-2 text-center schedule-cell" data-day="sun" data-staff="2">-</td>
+                                </tr>
+                                <tr class="border-t">
+                                    <td class="p-2">Neha G.</td>
+                                    <td class="p-2 text-center bg-red-100 schedule-cell" data-day="mon" data-staff="3">L</td>
+                                    <td class="p-2 text-center bg-red-100 schedule-cell" data-day="tue" data-staff="3">L</td>
+                                    <td class="p-2 text-center bg-red-100 schedule-cell" data-day="wed" data-staff="3">L</td>
+                                    <td class="p-2 text-center bg-blue-100 schedule-cell" data-day="thu" data-staff="3">✓</td>
+                                    <td class="p-2 text-center bg-blue-100 schedule-cell" data-day="fri" data-staff="3">✓</td>
+                                    <td class="p-2 text-center bg-blue-100 schedule-cell" data-day="sat" data-staff="3">✓</td>
+                                    <td class="p-2 text-center bg-blue-100 schedule-cell" data-day="sun" data-staff="3">✓</td>
+                                </tr>
+                                <tr class="border-t">
+                                    <td class="p-2">Ankit T.</td>
+                                    <td class="p-2 text-center bg-blue-100 schedule-cell" data-day="mon" data-staff="4">✓</td>
+                                    <td class="p-2 text-center bg-blue-100 schedule-cell" data-day="tue" data-staff="4">✓</td>
+                                    <td class="p-2 text-center schedule-cell" data-day="wed" data-staff="4">-</td>
+                                    <td class="p-2 text-center schedule-cell" data-day="thu" data-staff="4">-</td>
+                                    <td class="p-2 text-center bg-blue-100 schedule-cell" data-day="fri" data-staff="4">✓</td>
+                                    <td class="p-2 text-center bg-blue-100 schedule-cell" data-day="sat" data-staff="4">✓</td>
+                                    <td class="p-2 text-center bg-blue-100 schedule-cell" data-day="sun" data-staff="4">✓</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-4 flex space-x-4 text-sm">
+                        <div class="flex items-center">
+                            <div class="w-3 h-3 bg-blue-100 border border-blue-300 mr-1"></div>
+                            <span>Working</span>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="w-3 h-3 bg-red-100 border border-red-300 mr-1"></div>
+                            <span>Leave</span>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="w-3 h-3 bg-white border border-gray-300 mr-1"></div>
+                            <span>Off</span>
+                        </div>
+                    </div>
+                    <button id="editScheduleBtn" class="mt-4 w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">Edit Schedule</button>
+                </div>
+                
+                <!-- Staff Performance -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-bold mb-4">Performance Overview</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <span>Customer Service</span>
+                                <span class="text-sm font-semibold">85%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                <div class="bg-green-500 h-2.5 rounded-full" style="width: 85%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <span>Food Quality</span>
+                                <span class="text-sm font-semibold">92%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                <div class="bg-green-500 h-2.5 rounded-full" style="width: 92%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <span>Order Accuracy</span>
+                                <span class="text-sm font-semibold">78%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                <div class="bg-yellow-500 h-2.5 rounded-full" style="width: 78%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <span>Staff Punctuality</span>
+                                <span class="text-sm font-semibold">95%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                <div class="bg-green-500 h-2.5 rounded-full" style="width: 95%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6">
+                        <h3 class="font-semibold mb-3">Top Performers This Month</h3>
+                        <ol class="list-decimal list-inside space-y-2 ml-2">
+                            <li><span class="font-medium">Sanjay Rao</span> - Exceptional food quality and creativity</li>
+                            <li><span class="font-medium">Vikram Kumar</span> - Outstanding management and team leadership</li>
+                            <li><span class="font-medium">Ankit Tiwari</span> - Perfect cash handling and customer service</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="mt-6">
+                        <button id="generateReportBtn" class="w-full bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 transition">Generate Full Report</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Page -->
+        <div id="settingsPage" class="page-content">
+            <h1 class="text-3xl font-bold mb-6">Restaurant Settings</h1>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="md:col-span-2">
+                    <!-- Restaurant Profile -->
+                    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                        <h2 class="text-xl font-bold mb-4">Restaurant Profile</h2>
+                        <form id="restaurantProfileForm">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-gray-700 mb-2">Restaurant Name</label>
+                                    <input type="text" value="Gitanjali Restaurant" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" id="restaurantName">
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 mb-2">Contact Number</label>
+                                    <input type="text" value="+91 9876543210" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" id="contactNumber">
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="block text-gray-700 mb-2">Email Address</label>
+                                <input type="email" value="info@gitanjalirestaurant.com" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" id="emailAddress">
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="block text-gray-700 mb-2">Address</label>
+                                <textarea class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" rows="2" id="restaurantAddress">123 Main Street, City Center, State - 400001</textarea>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-gray-700 mb-2">GST Number</label>
+                                    <input type="text" value="22AAAAA0000A1Z5" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" id="gstNumber">
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 mb-2">FSSAI License</label>
+                                    <input type="text" value="1234567890123" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" id="fssaiLicense">
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="block text-gray-700 mb-2">Restaurant Description</label>
+                                <textarea class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3" id="restaurantDesc">Gitanjali Restaurant offers authentic Indian cuisine with a modern twist. Our dishes are prepared with fresh ingredients and traditional spices to give you a memorable dining experience.</textarea>
+                            </div>
+                            
+                            <button type="button" id="saveProfileBtn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">Save Changes</button>
+                        </form>
+                    </div>
+                    
+                    <!-- Business Hours -->
+                    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                        <h2 class="text-xl font-bold mb-4">Business Hours</h2>
+                        <div class="space-y-3" id="businessHoursForm">
+                            <div class="flex justify-between items-center">
+                                <span class="font-medium">Monday</span>
+                                <div class="flex items-center space-x-2">
+                                    <select class="border rounded px-2 py-1 business-hour-open" data-day="monday">
+                                        <option>11:00 AM</option>
+                                        <option>12:00 PM</option>
+                                    </select>
+                                    <span>to</span>
+                                    <select class="border rounded px-2 py-1 business-hour-close" data-day="monday">
+                                        <option>11:00 PM</option>
+                                        <option>10:00 PM</option>
+                                    </select>
+                                    <label class="relative inline-flex items-center cursor-pointer ml-2">
+                                        <input type="checkbox" value="" class="sr-only peer business-hour-toggle" data-day="monday" checked>
+                                        <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="font-medium">Tuesday</span>
+                                <div class="flex items-center space-x-2">
+                                    <select class="border rounded px-2 py-1 business-hour-open" data-day="tuesday">
+                                        <option>11:00 AM</option>
+                                    </select>
+                                    <span>to</span>
+                                    <select class="border rounded px-2 py-1 business-hour-close" data-day="tuesday">
+                                        <option>11:00 PM</option>
+                                    </select>
+                                    <label class="relative inline-flex items-center cursor-pointer ml-2">
+                                        <input type="checkbox" value="" class="sr-only peer business-hour-toggle" data-day="tuesday" checked>
+                                        <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="font-medium">Wednesday</span>
+                                <div class="flex items-center space-x-2">
+                                    <select class="border rounded px-2 py-1 business-hour-open" data-day="wednesday">
+                                        <option>11:00 AM</option>
+                                    </select>
+                                    <span>to</span>
+                                    <select class="border rounded px-2 py-1 business-hour-close" data-day="wednesday">
+                                        <option>11:00 PM</option>
+                                    </select>
+                                    <label class="relative inline-flex items-center cursor-pointer ml-2">
+                                        <input type="checkbox" value="" class="sr-only peer business-hour-toggle" data-day="wednesday" checked>
+                                        <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="font-medium">Thursday</span>
+                                <div class="flex items-center space-x-2">
+                                    <select class="border rounded px-2 py-1 business-hour-open" data-day="thursday">
+                                        <option>11:00 AM</option>
+                                    </select>
+                                    <span>to</span>
+                                    <select class="border rounded px-2 py-1 business-hour-close" data-day="thursday">
+                                        <option>11:00 PM</option>
+                                    </select>
+                                    <label class="relative inline-flex items-center cursor-pointer ml-2">
+                                        <input type="checkbox" value="" class="sr-only peer business-hour-toggle" data-day="thursday" checked>
+                                        <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="font-medium">Friday</span>
+                                <div class="flex items-center space-x-2">
+                                    <select class="border rounded px-2 py-1 business-hour-open" data-day="friday">
+                                        <option>11:00 AM</option>
+                                    </select>
+                                    <span>to</span>
+                                    <select class="border rounded px-2 py-1 business-hour-close" data-day="friday">
+                                        <option>12:00 AM</option>
+                                    </select>
+                                    <label class="relative inline-flex items-center cursor-pointer ml-2">
+                                        <input type="checkbox" value="" class="sr-only peer business-hour-toggle" data-day="friday" checked>
+                                        <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="font-medium">Saturday</span>
+                                <div class="flex items-center space-x-2">
+                                    <select class="border rounded px-2 py-1 business-hour-open" data-day="saturday">
+                                        <option>11:00 AM</option>
+                                    </select>
+                                    <span>to</span>
+                                    <select class="border rounded px-2 py-1 business-hour-close" data-day="saturday">
+                                        <option>12:00 AM</option>
+                                    </select>
+                                    <label class="relative inline-flex items-center cursor-pointer ml-2">
+                                        <input type="checkbox" value="" class="sr-only peer business-hour-toggle" data-day="saturday" checked>
+                                        <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="font-medium">Sunday</span>
+                                <div class="flex items-center space-x-2">
+                                    <select class="border rounded px-2 py-1 business-hour-open" data-day="sunday">
+                                        <option>11:00 AM</option>
+                                    </select>
+                                    <span>to</span>
+                                    <select class="border rounded px-2 py-1 business-hour-close" data-day="sunday">
+                                        <option>11:00 PM</option>
+                                    </select>
+                                    <label class="relative inline-flex items-center cursor-pointer ml-2">
+                                        <input type="checkbox" value="" class="sr-only peer business-hour-toggle" data-day="sunday" checked>
+                                        <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="saveHoursBtn" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">Save Hours</button>
+                    </div>
+                </div>
+                
+                <div>
+                    <!-- Theme Settings -->
+                    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                        <h2 class="text-xl font-bold mb-4">Theme Settings</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-gray-700 mb-2">Theme Mode</label>
+                                <div class="flex space-x-4">
+                                    <label class="inline-flex items-center">
+                                        <input type="radio" name="theme" value="light" class="form-radio text-blue-600" checked>
+                                        <span class="ml-2">Light</span>
+                                    </label>
+                                    <label class="inline-flex items-center">
+                                        <input type="radio" name="theme" value="dark" class="form-radio text-blue-600">
+                                        <span class="ml-2">Dark</span>
+                                    </label>
+                                    <label class="inline-flex items-center">
+                                        <input type="radio" name="theme" value="system" class="form-radio text-blue-600">
+                                        <span class="ml-2">System</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 mb-2">Accent Color</label>
+                                <div class="grid grid-cols-4 gap-2">
+                                    <div class="h-8 bg-blue-500 rounded cursor-pointer ring-2 ring-offset-2 ring-blue-500 color-option" data-color="blue"></div>
+                                    <div class="h-8 bg-purple-500 rounded cursor-pointer color-option" data-color="purple"></div>
+                                    <div class="h-8 bg-green-500 rounded cursor-pointer color-option" data-color="green"></div>
+                                    <div class="h-8 bg-red-500 rounded cursor-pointer color-option" data-color="red"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 mb-2">Font Size</label>
+                                <select class="w-full border rounded px-3 py-2" id="fontSizeSelect">
+                                    <option value="small">Small</option>
+                                    <option value="medium" selected>Medium</option>
+                                    <option value="large">Large</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button id="applyThemeBtn" class="mt-4 w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">Apply Theme</button>
+                    </div>
+                    
+                    <!-- System Settings -->
+                    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                        <h2 class="text-xl font-bold mb-4">System Settings</h2>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span>Email Notifications</span>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" value="" class="sr-only peer system-setting-toggle" data-setting="email" checked>
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                                </label>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span>SMS Alerts</span>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" value="" class="sr-only peer system-setting-toggle" data-setting="sms" checked>
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                                </label>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span>Auto Backup</span>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" value="" class="sr-only peer system-setting-toggle" data-setting="backup" checked>
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                                </label>
+                            </div>
+                            <div class="mt-4">
+                                <label class="block text-gray-700 mb-2">Backup Frequency</label>
+                                <select class="w-full border rounded px-3 py-2" id="backupFrequencySelect">
+                                    <option value="daily">Daily</option>
+                                    <option value="weekly" selected>Weekly</option>
+                                    <option value="monthly">Monthly</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button id="saveSystemSettingsBtn" class="mt-4 w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">Save Settings</button>
+                    </div>
+                    
+                    <!-- Account Settings -->
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h2 class="text-xl font-bold mb-4">Account Settings</h2>
+                        <div class="space-y-3">
+                            <a href="#" class="flex items-center justify-between p-2 hover:bg-gray-50 rounded" id="changePasswordBtn">
+                                <span>Change Password</span>
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                            <a href="#" class="flex items-center justify-between p-2 hover:bg-gray-50 rounded" id="twoFactorBtn">
+                                <span>Two-Factor Authentication</span>
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                            <a href="#" class="flex items-center justify-between p-2 hover:bg-gray-50 rounded" id="manageUsersBtn">
+                                <span>Manage Users</span>
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                            <a href="#" class="flex items-center justify-between p-2 hover:bg-gray-50 rounded" id="privacySettingsBtn">
+                                <span>Privacy Settings</span>
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </div>
+                        <button class="mt-6 w-full bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition" id="logoutBtnSettings">Sign Out</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Chat Widget -->
+    <div class="chat-widget">
+        <div id="chatBox" class="hidden bg-white rounded-lg shadow-lg p-4 mb-4 w-80">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center">
+                    <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=GitAI" alt="GitAI" class="w-10 h-10 rounded-full">
+                    <div class="ml-3">
+                        <div class="font-bold">GitAI</div>
+                        <div class="text-sm text-gray-600">Restaurant Assistant</div>
+                    </div>
+                </div>
+                <button id="closeChat" class="text-gray-500 hover:text-gray-700">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div id="chatMessages" class="space-y-2 max-h-60 overflow-y-auto mb-4 p-2 bg-gray-50 rounded"></div>
+            <div class="flex items-center">
+                <input type="text" id="chatInput" class="flex-1 border rounded-l-lg px-4 py-2 focus:outline-none focus:border-blue-500" placeholder="Type your message...">
+                <button id="sendMessage" class="bg-blue-500 text-white px-4 py-2 rounded-r-lg hover:bg-blue-600 transition">
+                    <i class="bi bi-send"></i>
+                </button>
+            </div>
+        </div>
+        <button id="toggleChat" class="bg-blue-500 text-white p-4 rounded-full shadow-lg hover:bg-blue-600 float-right transition duration-300">
+            <i class="bi bi-chat-dots text-xl"></i>
+        </button>
+    </div>
+
+    <!-- Shopping Cart Modal -->
+    <div id="cartModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">Your Order</h2>
+                <button id="closeCartModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div id="cartItems" class="divide-y">
+                <!-- Cart items will be added here dynamically -->
+            </div>
+            <div class="mt-4 pt-4 border-t">
+                <div class="flex justify-between font-bold">
+                    <span>Total:</span>
+                    <span id="cartTotal">₹0</span>
+                </div>
+                <div class="mt-6 flex space-x-2">
+                    <button id="clearCartBtn" class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 flex-1">Clear All</button>
+                    <button id="checkoutBtn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 flex-1">Checkout</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">Payment</h2>
+                <button id="closePaymentModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="mb-4">
+                <div class="text-gray-600 mb-2">Order Total:</div>
+                <div class="text-2xl font-bold" id="paymentAmount">₹0</div>
+            </div>
+            <div class="mb-4">
+                <label class="block text-gray-700 mb-2">Payment Method</label>
+                <div class="space-y-2">
+                    <label class="flex items-center p-3 border rounded cursor-pointer hover:bg-gray-50">
+                        <input type="radio" name="paymentMethod" value="cash" class="mr-3" checked>
+                        <i class="bi bi-cash text-xl mr-2"></i> Cash
+                    </label>
+                    <label class="flex items-center p-3 border rounded cursor-pointer hover:bg-gray-50">
+                        <input type="radio" name="paymentMethod" value="card" class="mr-3">
+                        <i class="bi bi-credit-card text-xl mr-2"></i> Credit/Debit Card
+                    </label>
+                    <label class="flex items-center p-3 border rounded cursor-pointer hover:bg-gray-50">
+                        <input type="radio" name="paymentMethod" value="upi" class="mr-3">
+                        <i class="bi bi-phone text-xl mr-2"></i> UPI
+                    </label>
+                </div>
+            </div>
+            <div id="cardDetails" class="mb-4 hidden">
+                <div class="mb-3">
+                    <label class="block text-gray-700 mb-1">Card Number</label>
+                    <input type="text" class="w-full border rounded px-3 py-2" placeholder="1234 5678 9012 3456">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-gray-700 mb-1">Expiry Date</label>
+                        <input type="text" class="w-full border rounded px-3 py-2" placeholder="MM/YY">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-1">CVV</label>
+                        <input type="text" class="w-full border rounded px-3 py-2" placeholder="123">
+                    </div>
+                </div>
+            </div>
+            <div id="upiDetails" class="mb-4 hidden">
+                <label class="block text-gray-700 mb-1">UPI ID</label>
+                <input type="text" class="w-full border rounded px-3 py-2" placeholder="example@upi">
+            </div>
+            <div class="flex justify-between">
+                <button id="cancelPaymentBtn" class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300">Cancel</button>
+                <button id="processPaymentBtn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Pay Now</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Success Modal -->
+    <div id="paymentSuccessModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full text-center">
+            <div class="flex justify-center mb-4">
+                <div class="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
+                    <svg class="w-10 h-10 text-green-500" viewBox="0 0 24 24" fill="none">
+                        <path d="M5 13L9 17L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="checkmark"></path>
+                    </svg>
+                </div>
+            </div>
+            <h2 class="text-2xl font-bold mb-2">Payment Successful!</h2>
+            <p class="text-gray-600 mb-6">Your order has been placed successfully.</p>
+            <div class="mb-6 bg-gray-50 p-4 rounded">
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Order ID:</span>
+                    <span class="font-medium" id="successOrderId">#ORD-1234</span>
+                </div>
+                <div class="flex justify-between mt-1">
+                    <span class="text-gray-600">Amount Paid:</span>
+                    <span class="font-medium" id="successAmount">₹0</span>
+                </div>
+                <div class="flex justify-between mt-1">
+                    <span class="text-gray-600">Payment Method:</span>
+                    <span class="font-medium" id="successPaymentMethod">Card</span>
+                </div>
+            </div>
+            <button id="closeSuccessBtn" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition duration-300 w-full">Done</button>
+        </div>
+    </div>
+
+    <!-- Add Menu Item Modal -->
+    <div id="addMenuItemModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">Add New Menu Item</h2>
+                <button id="closeAddItemModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <form id="menuItemForm">
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Item Name</label>
+                    <input type="text" class="w-full border rounded px-3 py-2" placeholder="Enter item name" id="menuItemName" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Category</label>
+                    <select class="w-full border rounded px-3 py-2" id="menuItemCategory" required>
+                        <option value="">Select category</option>
+                        <option value="starters">Starters</option>
+                        <option value="mains">Main Course</option>
+                        <option value="desserts">Desserts</option>
+                        <option value="beverages">Beverages</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Price (₹)</label>
+                    <input type="number" class="w-full border rounded px-3 py-2" placeholder="Enter price" id="menuItemPrice" min="0" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Description</label>
+                    <textarea class="w-full border rounded px-3 py-2" rows="2" placeholder="Enter item description" id="menuItemDesc" required></textarea>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Item Image</label>
+                    <div class="border-dashed border-2 border-gray-300 rounded p-4 text-center cursor-pointer hover:bg-gray-50" id="menuItemImageUpload">
+                        <i class="bi bi-cloud-upload text-gray-400 text-3xl"></i>
+                        <p class="text-sm text-gray-500 mt-2">Click to upload or drag and drop</p>
+                    </div>
+                </div>
+                <div class="flex items-center mb-4">
+                    <label class="relative inline-flex items-center cursor-pointer mr-3">
+                        <input type="checkbox" value="" class="sr-only peer" checked id="menuItemAvailable">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                    </label>
+                    <span>Available for order</span>
+                </div>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" id="cancelAddItem" class="px-4 py-2 border rounded hover:bg-gray-100">Cancel</button>
+                    <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Add Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- New Reservation Modal -->
+    <div id="newReservationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">New Reservation</h2>
+                <button id="closeReservationModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <form id="reservationForm">
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Customer Name</label>
+                    <input type="text" class="w-full border rounded px-3 py-2" placeholder="Enter customer name" id="customerName" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Contact Number</label>
+                    <input type="tel" class="w-full border rounded px-3 py-2" placeholder="Enter phone number" id="customerPhone" required>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2">Date</label>
+                        <input type="date" class="w-full border rounded px-3 py-2" id="reservationDate" required>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">Time</label>
+                        <input type="time" class="w-full border rounded px-3 py-2" id="reservationTime" required>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2">Number of Guests</label>
+                        <select class="w-full border rounded px-3 py-2" id="guestCount" required>
+                            <option value="">Select</option>
+                            <option value="1">1 Person</option>
+                            <option value="2">2 People</option>
+                            <option value="3">3 People</option>
+                            <option value="4">4 People</option>
+                            <option value="5">5 People</option>
+                            <option value="6">6 People</option>
+                            <option value="7">7 People</option>
+                            <option value="8">8 People</option>
+                            <option value="more">More</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">Table Preference</label>
+                        <select class="w-full border rounded px-3 py-2" id="tablePreference">
+                            <option value="">No preference</option>
+                            <option value="window">Window Table</option>
+                            <option value="outdoor">Outdoor Seating</option>
+                            <option value="private">Private Area</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Special Requests (Optional)</label>
+                    <textarea class="w-full border rounded px-3 py-2" rows="2" id="specialRequests" placeholder="Any dietary restrictions or special occasions?"></textarea>
+                </div>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" id="cancelReservation" class="px-4 py-2 border rounded hover:bg-gray-100">Cancel</button>
+                    <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Book Table</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Staff Modal -->
+    <div id="addStaffModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">Add New Staff</h2>
+                <button id="closeStaffModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <form id="staffForm">
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Full Name</label>
+                    <input type="text" class="w-full border rounded px-3 py-2" placeholder="Enter full name" id="staffName" required>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2">Role</label>
+                        <select class="w-full border rounded px-3 py-2" id="staffRole" required>
+                            <option value="">Select role</option>
+                            <option value="manager">Manager</option>
+                            <option value="chef">Chef</option>
+                            <option value="waiter">Waiter</option>
+                            <option value="cashier">Cashier</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">Shift</label>
+                        <select class="w-full border rounded px-3 py-2" id="staffShift" required>
+                            <option value="">Select shift</option>
+                            <option value="morning">Morning (6 AM - 2 PM)</option>
+                            <option value="evening">Evening (2 PM - 10 PM)</option>
+                            <option value="night">Night (10 PM - 6 AM)</option>
+                            <option value="custom">Custom Hours</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="customShiftHours" class="mb-4 hidden">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 mb-2">Start Time</label>
+                            <input type="time" class="w-full border rounded px-3 py-2" id="shiftStartTime">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">End Time</label>
+                            <input type="time" class="w-full border rounded px-3 py-2" id="shiftEndTime">
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Contact Number</label>
+                    <input type="tel" class="w-full border rounded px-3 py-2" placeholder="Enter phone number" id="staffPhone" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Email</label>
+                    <input type="email" class="w-full border rounded px-3 py-2" placeholder="Enter email" id="staffEmail">
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2">Joining Date</label>
+                        <input type="date" class="w-full border rounded px-3 py-2" id="joiningDate" required>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">Salary</label>
+                        <input type="number" class="w-full border rounded px-3 py-2" placeholder="Monthly salary" id="staffSalary">
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" id="cancelAddStaff" class="px-4 py-2 border rounded hover:bg-gray-100">Cancel</button>
+                    <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Add Staff</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full">
+            <h2 class="text-2xl font-bold mb-4">Login to Dashboard</h2>
+            <div class="mb-4">
+                <label for="username" class="block text-gray-700 mb-2">Username</label>
+                <input type="text" id="username" class="w-full p-2 border rounded focus:outline-none focus:border-blue-500" placeholder="Enter your username">
+            </div>
+            <div class="mb-6">
+                <label for="password" class="block text-gray-700 mb-2">Password</label>
+                <input type="password" id="password" class="w-full p-2 border rounded focus:outline-none focus:border-blue-500" placeholder="Enter your password">
+            </div>
+            <div class="flex justify-end space-x-4">
+                <button id="cancelLogin" class="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 transition">Cancel</button>
+                <button id="submitLogin" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">Login</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global Variables
+        let cart = [];
+        let currentOrderId = 5;
+        let selectedTableForReservation = null;
+        let currentUser = "Admin User";
+        
+        // Mobile Menu Toggle
+        const menuBtn = document.getElementById('menuBtn');
+        const sidebar = document.querySelector('.sidebar');
+        
+        menuBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('show');
+        });
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768 && sidebar.classList.contains('show')) {
+                if (!sidebar.contains(e.target) && e.target !== menuBtn) {
+                    sidebar.classList.remove('show');
+                }
+            }
+        });
+
+        // Navigation functionality
+        const navLinks = document.querySelectorAll('.nav-link');
+        const pages = document.querySelectorAll('.page-content');
+        
+        navLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Update active nav link
+                navLinks.forEach(navLink => navLink.classList.remove('bg-gray-800'));
+                this.classList.add('bg-gray-800');
+                
+                // Show the corresponding page
+                const targetPage = this.getAttribute('data-page');
+                pages.forEach(page => page.classList.remove('active'));
+                document.getElementById(`${targetPage}Page`).classList.add('active');
+                
+                // Close mobile menu after navigation
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.remove('show');
+                }
+            });
+        });
+
+        // Chat Widget
+        const toggleChat = document.getElementById('toggleChat');
+        const chatBox = document.getElementById('chatBox');
+        const chatInput = document.getElementById('chatInput');
+        const sendMessage = document.getElementById('sendMessage');
+        const chatMessages = document.getElementById('chatMessages');
+        const closeChat = document.getElementById('closeChat');
+
+        toggleChat.addEventListener('click', () => {
+            chatBox.classList.toggle('hidden');
+            if (!chatBox.classList.contains('hidden') && chatMessages.children.length === 0) {
+                // Add initial welcome message
+                setTimeout(() => {
+                    addMessage("Hello! Welcome to Gitanjali Restaurant. How can I assist you today?");
+                }, 500);
+            }
+        });
+
+        closeChat.addEventListener('click', () => {
+            chatBox.classList.add('hidden');
+        });
+
+        function addMessage(message, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `p-3 rounded-lg ${isUser ? 'bg-blue-100 ml-auto' : 'bg-white border'} max-w-[80%] ${isUser ? 'text-right' : 'text-left'}`;
+            messageDiv.textContent = message;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // AI response based on user query
+        function getAIResponse(query) {
+            query = query.toLowerCase();
+            
+            if (query.includes('menu') || query.includes('food') || query.includes('dish')) {
+                return "Our most popular dishes include Butter Chicken (₹320), Paneer Tikka Masala (₹280), and Chicken Biryani (₹350). Would you like to know about more dishes?";
+            } else if (query.includes('hour') || query.includes('open') || query.includes('timing')) {
+                return "We are open from 11:00 AM to 11:00 PM, seven days a week.";
+            } else if (query.includes('reservation') || query.includes('book') || query.includes('table')) {
+                return "You can make a reservation directly through our dashboard. Would you like me to guide you through the process?";
+            } else if (query.includes('location') || query.includes('address') || query.includes('where')) {
+                return "We are located at 123 Main Street, City Center. Would you like directions?";
+            } else if (query.includes('hello') || query.includes('hi') || query.includes('hey')) {
+                return "Hello! How can I help you with Gitanjali Restaurant services today?";
+            } else if (query.includes('thank')) {
+                return "You're welcome! Is there anything else I can help you with?";
+            } else if (query.includes('order')) {
+                return "You can place an order by selecting items from our dashboard menu. Would you like me to assist you with placing an order?";
+            } else if (query.includes('payment') || query.includes('pay')) {
+                return "We accept cash, credit/debit cards, and UPI payments. All payments are securely processed in our system.";
+            } else {
+                return "I'm here to help with information about our menu, reservations, hours, or any other questions about Gitanjali Restaurant. What would you like to know?";
+            }
+        }
+
+        sendMessage.addEventListener('click', async () => {
+            const message = chatInput.value.trim();
+            if (!message) return;
+
+            addMessage(message, true);
+            chatInput.value = '';
+
+            // Show loading indicator
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'p-3 rounded-lg bg-white border max-w-[80%] text-left flex items-center';
+            loadingDiv.innerHTML = '<i class="bi bi-three-dots-animated loading text-gray-500 text-xl"></i>';
+            chatMessages.appendChild(loadingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Hide loading and show AI response after a short delay
+            setTimeout(() => {
+                loadingDiv.remove();
+                const response = getAIResponse(message);
+                addMessage(response);
+            }, 1500);
+        });
+
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage.click();
+            }
+        });
+
+        // Login Modal
+        const loginModal = document.getElementById('loginModal');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const logoutBtnSettings = document.getElementById('logoutBtnSettings');
+        const submitLogin = document.getElementById('submitLogin');
+        const cancelLogin = document.getElementById('cancelLogin');
+        const currentUserDisplay = document.getElementById('currentUserDisplay');
+
+        // Login functionality
+        submitLogin.addEventListener('click', () => {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            if (username && password) {
+                // Simple validation (in real app would connect to authentication service)
+                loginModal.classList.add('hidden');
+                currentUser = username;
+                if (currentUserDisplay) {
+                    currentUserDisplay.textContent = username;
+                }
+                
+                // Show success message
+                showNotification('Login successful! Welcome back, ' + username, 'success');
+            } else {
+                showNotification('Please enter both username and password', 'error');
+            }
+        });
+
+        cancelLogin.addEventListener('click', () => {
+            // Just close the modal but don't log in
+            if (confirm('Are you sure you want to cancel login?')) {
+                loginModal.classList.add('hidden');
+                
+                // Auto-login for demo purposes
+                setTimeout(() => {
+                    showNotification('Auto-login successful for demo purposes', 'success');
+                }, 1000);
+            }
+        });
+
+        // Logout functionality
+        function handleLogout() {
+            if (confirm('Are you sure you want to logout?')) {
+                // Show login modal on logout
+                loginModal.classList.remove('hidden');
+                
+                // Show success message
+                showNotification('Logged out successfully!', 'success');
+            }
+        }
+        
+        logoutBtn.addEventListener('click', handleLogout);
+        if (logoutBtnSettings) {
+            logoutBtnSettings.addEventListener('click', handleLogout);
+        }
+
+        // Cart functionality
+        const cartBtn = document.getElementById('cartBtn');
+        const cartModal = document.getElementById('cartModal');
+        const closeCartModal = document.getElementById('closeCartModal');
+        const cartItems = document.getElementById('cartItems');
+        const cartTotal = document.getElementById('cartTotal');
+        const cartCount = document.getElementById('cartCount');
+        const clearCartBtn = document.getElementById('clearCartBtn');
+        const checkoutBtn = document.getElementById('checkoutBtn');
+        
+        cartBtn.addEventListener('click', () => {
+            updateCartDisplay();
+            cartModal.classList.remove('hidden');
+        });
+        
+        closeCartModal.addEventListener('click', () => {
+            cartModal.classList.add('hidden');
+        });
+        
+        clearCartBtn.addEventListener('click', () => {
+            if (confirm('Are you sure you want to clear your cart?')) {
+                cart = [];
+                updateCartCount();
+                updateCartDisplay();
+                showNotification('Cart has been cleared', 'success');
+            }
+        });
+        
+        checkoutBtn.addEventListener('click', () => {
+            if (cart.length === 0) {
+                showNotification('Your cart is empty', 'error');
+                return;
+            }
+            
+            // Close cart modal and open payment modal
+            cartModal.classList.add('hidden');
+            
+            // Show payment modal
+            const paymentModal = document.getElementById('paymentModal');
+            const paymentAmount = document.getElementById('paymentAmount');
+            paymentAmount.textContent = `₹${calculateTotal()}`;
+            paymentModal.classList.remove('hidden');
+        });
+        
+        // Add to Order functionality
+        const addToOrderButtons = document.querySelectorAll('.add-to-order');
+        
+        addToOrderButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const foodCard = this.closest('.food-card');
+                const foodItem = foodCard.querySelector('h3').textContent;
+                const price = foodCard.querySelector('span').textContent.replace('₹', '');
+                const image = foodCard.querySelector('img').src;
+                
+                addToCart(foodItem, parseInt(price), image);
+                
+                // Show added to order notification
+                showNotification(`${foodItem} (₹${price}) added to order!`, 'success');
+                
+                // Show order notification in sidebar
+                document.getElementById('orderNotification').style.display = 'block';
+            });
+        });
+        
+        function addToCart(name, price, image) {
+            // Check if item is already in cart
+            const existingItem = cart.find(item => item.name === name);
+            
+            if (existingItem) {
+                existingItem.quantity += 1;
+            } else {
+                cart.push({
+                    name,
+                    price,
+                    image,
+                    quantity: 1
+                });
+            }
+            
+            updateCartCount();
+        }
+        
+        function updateCartCount() {
+            const totalItems = cart.reduce((total, item) => total + item.quantity, 0);
+            cartCount.textContent = totalItems;
+        }
+        
+        function updateCartDisplay() {
+            cartItems.innerHTML = '';
+            
+            if (cart.length === 0) {
+                cartItems.innerHTML = '<div class="py-4 text-center text-gray-500">Your cart is empty</div>';
+                cartTotal.textContent = '₹0';
+                return;
+            }
+            
+            cart.forEach((item, index) => {
+                const itemElement = document.createElement('div');
+                itemElement.className = 'py-3 flex items-center justify-between';
+                itemElement.innerHTML = `
+                    <div class="flex items-center">
+                        <img src="${item.image}" alt="${item.name}" class="w-12 h-12 object-cover rounded mr-3">
+                        <div>
+                            <div class="font-medium">${item.name}</div>
+                            <div class="text-gray-600">₹${item.price} × ${item.quantity}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="font-bold">₹${item.price * item.quantity}</span>
+                        <button class="text-red-500 hover:text-red-700 remove-cart-item" data-index="${index}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                `;
+                cartItems.appendChild(itemElement);
+            });
+            
+            // Add remove item listeners
+            document.querySelectorAll('.remove-cart-item').forEach(button => {
+                button.addEventListener('click', function() {
+                    const index = parseInt(this.getAttribute('data-index'));
+                    removeCartItem(index);
+                });
+            });
+            
+            cartTotal.textContent = `₹${calculateTotal()}`;
+        }
+        
+        function calculateTotal() {
+            return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+        }
+        
+        function removeCartItem(index) {
+            cart.splice(index, 1);
+            updateCartCount();
+            updateCartDisplay();
+            showNotification('Item removed from cart', 'success');
+        }
+        
+        // Payment Modal Functionality
+        const paymentModal = document.getElementById('paymentModal');
+        const closePaymentModal = document.getElementById('closePaymentModal');
+        const cancelPaymentBtn = document.getElementById('cancelPaymentBtn');
+        const processPaymentBtn = document.getElementById('processPaymentBtn');
+        const paymentMethodRadios = document.querySelectorAll('input[name="paymentMethod"]');
+        const cardDetails = document.getElementById('cardDetails');
+        const upiDetails = document.getElementById('upiDetails');
+        
+        closePaymentModal.addEventListener('click', () => {
+            paymentModal.classList.add('hidden');
+        });
+        
+        cancelPaymentBtn.addEventListener('click', () => {
+            paymentModal.classList.add('hidden');
+        });
+        
+        paymentMethodRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                const method = this.value;
+                
+                cardDetails.classList.add('hidden');
+                upiDetails.classList.add('hidden');
+                
+                if (method === 'card') {
+                    cardDetails.classList.remove('hidden');
+                } else if (method === 'upi') {
+                    upiDetails.classList.remove('hidden');
+                }
+            });
+        });
+        
+        processPaymentBtn.addEventListener('click', () => {
+            // Get selected payment method
+            const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
+            
+            // Simulate payment processing
+            showLoadingNotification('Processing payment...');
+            
+            setTimeout(() => {
+                // Close payment modal
+                paymentModal.classList.add('hidden');
+                
+                // Show success modal
+                const successModal = document.getElementById('paymentSuccessModal');
+                const successOrderId = document.getElementById('successOrderId');
+                const successAmount = document.getElementById('successAmount');
+                const successPaymentMethod = document.getElementById('successPaymentMethod');
+                
+                // Generate random order ID
+                const orderId = `#ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+                successOrderId.textContent = orderId;
+                successAmount.textContent = `₹${calculateTotal()}`;
+                
+                let methodText = 'Cash';
+                if (paymentMethod === 'card') methodText = 'Credit/Debit Card';
+                if (paymentMethod === 'upi') methodText = 'UPI';
+                successPaymentMethod.textContent = methodText;
+                
+                successModal.classList.remove('hidden');
+                
+                // Clear cart after successful payment
+                cart = [];
+                updateCartCount();
+                
+                // Add order to orders page
+                addNewOrder();
+            }, 2000);
+        });
+        
+        // Payment Success Modal
+        const successModal = document.getElementById('paymentSuccessModal');
+        const closeSuccessBtn = document.getElementById('closeSuccessBtn');
+        
+        closeSuccessBtn.addEventListener('click', () => {
+            successModal.classList.add('hidden');
+        });
+        
+        // Add Menu Item Modal
+        const addMenuItemBtn = document.getElementById('addMenuItemBtn');
+        const addMenuItemModal = document.getElementById('addMenuItemModal');
+        const closeAddItemModal = document.getElementById('closeAddItemModal');
+        const cancelAddItem = document.getElementById('cancelAddItem');
+        const menuItemForm = document.getElementById('menuItemForm');
+        
+        if (addMenuItemBtn) {
+            addMenuItemBtn.addEventListener('click', () => {
+                addMenuItemModal.classList.remove('hidden');
+            });
+        }
+        
+        if (closeAddItemModal) {
+            closeAddItemModal.addEventListener('click', () => {
+                addMenuItemModal.classList.add('hidden');
+            });
+        }
+        
+        if (cancelAddItem) {
+            cancelAddItem.addEventListener('click', () => {
+                addMenuItemModal.classList.add('hidden');
+            });
+        }
+        
+        if (menuItemForm) {
+            menuItemForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Get form data
+                const name = document.getElementById('menuItemName').value;
+                const category = document.getElementById('menuItemCategory').value;
+                const price = document.getElementById('menuItemPrice').value;
+                const description = document.getElementById('menuItemDesc').value;
+                const available = document.getElementById('menuItemAvailable').checked;
+                
+                // Add new menu item (in real app would save to database)
+                addNewMenuItem(name, category, price, description, available);
+                
+                // Close modal and show notification
+                addMenuItemModal.classList.add('hidden');
+                showNotification(`${name} added to menu`, 'success');
+                
+                // Reset form
+                this.reset();
+            });
+        }
+        
+        function addNewMenuItem(name, category, price, description, available) {
+            // Get table body
+            const tableBody = document.getElementById('menuItemsTableBody');
+            
+            // Create new row
+            const newRow = document.createElement('tr');
+            newRow.className = 'border-t menu-item';
+            newRow.setAttribute('data-category', getCategoryValue(category));
+            
+            // Set row HTML
+            newRow.innerHTML = `
+                <td class="py-3 px-4">
+                    <div class="flex items-center">
+                        <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" class="w-12 h-12 rounded object-cover mr-3">
+                        <div>
+                            <div class="font-medium">${name}</div>
+                            <div class="text-sm text-gray-500">${description}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="py-3 px-4">${category}</td>
+                <td class="py-3 px-4">₹${price}</td>
+                <td class="py-3 px-4">
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" value="" class="sr-only peer menu-item-toggle" ${available ? 'checked' : ''}>
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                    </label>
+                </td>
+                <td class="py-3 px-4">
+                    <div class="flex space-x-2">
+                        <button class="text-blue-500 hover:text-blue-700 edit-menu-item"><i class="bi bi-pencil"></i></button>
+                        <button class="text-red-500 hover:text-red-700 delete-menu-item"><i class="bi bi-trash"></i></button>
+                    </div>
+                </td>
+            `;
+            
+            // Add to table
+            tableBody.insertBefore(newRow, tableBody.firstChild);
+            
+            // Update menu item count
+            updateMenuItemCount();
+            
+            // Add event listeners to new buttons
+            addMenuItemEventListeners(newRow);
+        }
+        
+        function getCategoryValue(displayName) {
+            const categoryMap = {
+                'Starters': 'starters',
+                'Main Course': 'mains',
+                'Desserts': 'desserts',
+                'Beverages': 'beverages'
+            };
+            
+            return categoryMap[displayName] || displayName.toLowerCase();
+        }
+        
+        // New Reservation Modal
+        const newReservationBtn = document.getElementById('newReservationBtn');
+        const newReservationModal = document.getElementById('newReservationModal');
+        const closeReservationModal = document.getElementById('closeReservationModal');
+        const cancelReservation = document.getElementById('cancelReservation');
+        const reservationForm = document.getElementById('reservationForm');
+        
+        if (newReservationBtn) {
+            newReservationBtn.addEventListener('click', () => {
+                // Set default date to today
+                const today = new Date();
+                const formattedDate = today.toISOString().split('T')[0];
+                document.getElementById('reservationDate').value = formattedDate;
+                
+                newReservationModal.classList.remove('hidden');
+            });
+        }
+        
+        if (closeReservationModal) {
+            closeReservationModal.addEventListener('click', () => {
+                newReservationModal.classList.add('hidden');
+            });
+        }
+        
+        if (cancelReservation) {
+            cancelReservation.addEventListener('click', () => {
+                newReservationModal.classList.add('hidden');
+            });
+        }
+        
+        if (reservationForm) {
+            reservationForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Get form data
+                const name = document.getElementById('customerName').value;
+                const phone = document.getElementById('customerPhone').value;
+                const date = document.getElementById('reservationDate').value;
+                const time = document.getElementById('reservationTime').value;
+                const guests = document.getElementById('guestCount').value;
+                
+                // Add new reservation (in real app would save to database)
+                addNewReservation(name, date, time, guests);
+                
+                // Close modal and show notification
+                newReservationModal.classList.add('hidden');
+                showNotification(`Table reserved for ${name}`, 'success');
+                
+                // Reset form
+                this.reset();
+            });
+        }
+        
+        function addNewReservation(name, date, time, guests) {
+            // Get table body
+            const tableBody = document.getElementById('reservationsTableBody');
+            
+            // Find an available table
+            let tableNumber = findAvailableTable();
+            
+            // Create new row
+            const newRow = document.createElement('tr');
+            newRow.className = 'border-t reservation-row';
+            newRow.setAttribute('data-status', 'pending');
+            
+            // Parse time to format
+            const timeObj = new Date(`2023-01-01T${time}`);
+            const formattedTime = timeObj.toLocaleString('en-US', {
+                hour: 'numeric',
+                minute: 'numeric',
+                hour12: true
+            });
+            
+            // Set row HTML
+            newRow.innerHTML = `
+                <td class="py-3 px-4">${name}</td>
+                <td class="py-3 px-4">${formattedTime}</td>
+                <td class="py-3 px-4">${guests}</td>
+                <td class="py-3 px-4">Table ${tableNumber}</td>
+                <td class="py-3 px-4"><span class="bg-yellow-200 text-yellow-800 px-2 py-1 rounded text-sm">Pending</span></td>
+                <td class="py-3 px-4">
+                    <div class="flex space-x-2">
+                        <button class="text-blue-500 hover:text-blue-700 edit-reservation-btn"><i class="bi bi-pencil"></i></button>
+                        <button class="text-green-500 hover:text-green-700 confirm-reservation-btn"><i class="bi bi-check2"></i></button>
+                        <button class="text-red-500 hover:text-red-700 cancel-reservation-btn"><i class="bi bi-x"></i></button>
+                    </div>
+                </td>
+            `;
+            
+            // Add to table
+            tableBody.insertBefore(newRow, tableBody.firstChild);
+            
+            // Update table status
+            updateTableStatus(tableNumber, 'reserved');
+            
+            // Add event listeners to new buttons
+            addReservationEventListeners(newRow);
+        }
+        
+        function findAvailableTable() {
+            const tables = document.querySelectorAll('.table-item[data-status="available"]');
+            
+            if (tables.length > 0) {
+                const randomIndex = Math.floor(Math.random() * tables.length);
+                return tables[randomIndex].getAttribute('data-table');
+            }
+            
+            // If no tables available, return a random number
+            return Math.floor(1 + Math.random() * 12);
+        }
+        
+        function updateTableStatus(tableNumber, status) {
+            const table = document.querySelector(`.table-item[data-table="${tableNumber}"]`);
+            
+            if (table) {
+                // Remove current status classes
+                table.classList.remove('border-green-500', 'bg-green-100', 'border-red-500', 'bg-red-100', 'border-yellow-500', 'bg-yellow-100');
+                
+                // Remove current status text
+                const statusText = table.querySelector('.text-sm');
+                
+                if (status === 'available') {
+                    table.classList.add('border-green-500', 'bg-green-100');
+                    statusText.className = 'text-sm text-green-600';
+                    statusText.textContent = 'Available';
+                } else if (status === 'reserved') {
+                    table.classList.add('border-red-500', 'bg-red-100');
+                    statusText.className = 'text-sm text-red-600';
+                    statusText.textContent = 'Reserved';
+                } else if (status === 'occupied') {
+                    table.classList.add('border-yellow-500', 'bg-yellow-100');
+                    statusText.className = 'text-sm text-yellow-600';
+                    statusText.textContent = 'Occupied';
+                }
+                
+                // Update data attribute
+                table.setAttribute('data-status', status);
+            }
+        }
+        
+        // Add Staff Modal
+        const addStaffBtn = document.getElementById('addStaffBtn');
+        const addStaffModal = document.getElementById('addStaffModal');
+        const closeStaffModal = document.getElementById('closeStaffModal');
+        const cancelAddStaff = document.getElementById('cancelAddStaff');
+        const staffForm = document.getElementById('staffForm');
+        const staffShiftSelect = document.getElementById('staffShift');
+        const customShiftHours = document.getElementById('customShiftHours');
+        
+        if (addStaffBtn) {
+            addStaffBtn.addEventListener('click', () => {
+                // Set default date to today
+                const today = new Date();
+                const formattedDate = today.toISOString().split('T')[0];
+                document.getElementById('joiningDate').value = formattedDate;
+                
+                addStaffModal.classList.remove('hidden');
+            });
+        }
+        
+        if (closeStaffModal) {
+            closeStaffModal.addEventListener('click', () => {
+                addStaffModal.classList.add('hidden');
+            });
+        }
+        
+        if (cancelAddStaff) {
+            cancelAddStaff.addEventListener('click', () => {
+                addStaffModal.classList.add('hidden');
+            });
+        }
+        
+        if (staffShiftSelect) {
+            staffShiftSelect.addEventListener('change', function() {
+                if (this.value === 'custom') {
+                    customShiftHours.classList.remove('hidden');
+                } else {
+                    customShiftHours.classList.add('hidden');
+                }
+            });
+        }
+        
+        if (staffForm) {
+            staffForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Get form data
+                const name = document.getElementById('staffName').value;
+                const role = document.getElementById('staffRole').value;
+                const shift = document.getElementById('staffShift').value;
+                const phone = document.getElementById('staffPhone').value;
+                
+                // Determine shift hours
+                let shiftHours = '';
+                switch (shift) {
+                    case 'morning':
+                        shiftHours = '6 AM - 2 PM';
+                        break;
+                    case 'evening':
+                        shiftHours = '2 PM - 10 PM';
+                        break;
+                    case 'night':
+                        shiftHours = '10 PM - 6 AM';
+                        break;
+                    case 'custom':
+                        const start = document.getElementById('shiftStartTime').value;
+                        const end = document.getElementById('shiftEndTime').value;
+                        if (start && end) {
+                            const startTime = new Date(`2023-01-01T${start}`);
+                            const endTime = new Date(`2023-01-01T${end}`);
+                            shiftHours = `${startTime.toLocaleString('en-US', {hour: 'numeric', minute: 'numeric', hour12: true})} - ${endTime.toLocaleString('en-US', {hour: 'numeric', minute: 'numeric', hour12: true})}`;
+                        } else {
+                            shiftHours = 'Custom Hours';
+                        }
+                        break;
+                    default:
+                        shiftHours = 'Regular Hours';
+                }
+                
+                // Add new staff (in real app would save to database)
+                addNewStaff(name, role, shiftHours, phone);
+                
+                // Close modal and show notification
+                addStaffModal.classList.add('hidden');
+                showNotification(`${name} added to staff`, 'success');
+                
+                // Reset form
+                this.reset();
+                customShiftHours.classList.add('hidden');
+            });
+        }
+        
+        function addNewStaff(name, role, shift, phone) {
+            // Get table body
+            const tableBody = document.getElementById('staffTableBody');
+            
+            // Generate initials for avatar
+            const initials = name.split(' ').map(word => word[0]).join('');
+            
+            // Generate random color
+            const colors = ['0096c7', 'ff9100', '8338ec', 'e76f51', '2a9d8f'];
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            
+            // Create new row
+            const newRow = document.createElement('tr');
+            newRow.className = 'border-t staff-row';
+            newRow.setAttribute('data-role', role);
+            
+            // Format role for display
+            const displayRole = role.charAt(0).toUpperCase() + role.slice(1);
+            
+            // Set row HTML
+            newRow.innerHTML = `
+                <td class="py-3 px-4">
+                    <div class="flex items-center">
+                        <img src="https://api.dicebear.com/7.x/initials/svg?seed=${initials}&backgroundColor=${randomColor}" class="w-10 h-10 rounded-full mr-3">
+                        <div>
+                            <div class="font-medium">${name}</div>
+                            <div class="text-sm text-gray-500">ID: EMP${String(Math.floor(1000 + Math.random() * 9000)).padStart(3, '0')}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="py-3 px-4">${displayRole}</td>
+                <td class="py-3 px-4">${shift}</td>
+                <td class="py-3 px-4">${phone}</td>
+                <td class="py-3 px-4"><span class="bg-green-200 text-green-800 px-2 py-1 rounded text-sm">Active</span></td>
+                <td class="py-3 px-4">
+                    <div class="flex space-x-2">
+                        <button class="text-blue-500 hover:text-blue-700 edit-staff-btn"><i class="bi bi-pencil"></i></button>
+                        <button class="text-red-500 hover:text-red-700 delete-staff-btn"><i class="bi bi-trash"></i></button>
+                    </div>
+                </td>
+            `;
+            
+            // Add to table
+            tableBody.insertBefore(newRow, tableBody.firstChild);
+            
+            // Update staff count
+            updateStaffCount();
+            
+            // Add event listeners to new buttons
+            addStaffEventListeners(newRow);
+        }
+        
+        // Add New Order
+        function addNewOrder() {
+            // Get table body
+            const tableBody = document.getElementById('orderTableBody');
+            
+            // Create new row
+            const newRow = document.createElement('tr');
+            newRow.className = 'border-t order-row';
+            newRow.setAttribute('data-status', 'pending');
+            
+            // Generate order details
+            const orderId = `#ORD-00${currentOrderId++}`;
+            const tableNum = Math.floor(1 + Math.random() * 12);
+            
+            // Create order items description
+            const orderItems = cart.map(item => `${item.name}${item.quantity > 1 ? ` (${item.quantity})` : ''}`).join(', ');
+            const orderTotal = calculateTotal();
+            
+            // Set row HTML
+            newRow.innerHTML = `
+                <td class="py-3 px-4">${orderId}</td>
+                <td class="py-3 px-4">Table ${tableNum}</td>
+                <td class="py-3 px-4">${orderItems}</td>
+                <td class="py-3 px-4">₹${orderTotal}</td>
+                <td class="py-3 px-4"><span class="bg-red-200 text-red-800 px-2 py-1 rounded text-sm">Pending</span></td>
+                <td class="py-3 px-4">
+                    <div class="flex space-x-2">
+                        <button class="text-blue-500 hover:text-blue-700 view-order-btn"><i class="bi bi-eye"></i></button>
+                        <button class="text-green-500 hover:text-green-700 complete-order-btn"><i class="bi bi-check2-circle"></i></button>
+                        <button class="text-red-500 hover:text-red-700 cancel-order-btn"><i class="bi bi-x-circle"></i></button>
+                    </div>
+                </td>
+            `;
+            
+            // Add to table
+            tableBody.insertBefore(newRow, tableBody.firstChild);
+            
+            // Update order count
+            updateOrderCount();
+            
+            // Add event listeners to new buttons
+            addOrderEventListeners(newRow);
+            
+            // Update pending orders count
+            const pendingOrdersElement = document.querySelector('.bg-purple-50 .text-3xl');
+            if (pendingOrdersElement) {
+                pendingOrdersElement.textContent = parseInt(pendingOrdersElement.textContent) + 1;
+            }
+        }
+        
+        // Notification function
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 p-4 rounded shadow-lg z-50 ${type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white`;
+            notification.innerText = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+        
+        function showLoadingNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 p-4 rounded shadow-lg z-50 bg-blue-500 text-white flex items-center';
+            notification.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                ${message}
+            `;
+            document.body.appendChild(notification);
+            
+            return notification;
+        }
+        
+        // Event listeners for dynamic elements
+        
+        // Orders page
+        function addOrderEventListeners(row) {
+            const viewBtn = row.querySelector('.view-order-btn');
+            const completeBtn = row.querySelector('.complete-order-btn');
+            const cancelBtn = row.querySelector('.cancel-order-btn');
+            
+            if (viewBtn) {
+                viewBtn.addEventListener('click', function() {
+                    const orderId = row.querySelector('td:first-child').textContent;
+                    const items = row.querySelector('td:nth-child(3)').textContent;
+                    const amount = row.querySelector('td:nth-child(4)').textContent;
+                    
+                    showNotification(`Viewing order ${orderId}: ${items} (${amount})`, 'success');
+                });
+            }
+            
+            if (completeBtn) {
+                completeBtn.addEventListener('click', function() {
+                    const orderId = row.querySelector('td:first-child').textContent;
+                    const statusCell = row.querySelector('td:nth-child(5)');
+                    const status = row.getAttribute('data-status');
+                    
+                    if (status === 'delivered') return;
+                    
+                    let newStatus = '';
+                    let newStatusText = '';
+                    let newStatusClass = '';
+                    
+                    if (status === 'pending') {
+                        newStatus = 'preparing';
+                        newStatusText = 'Preparing';
+                        newStatusClass = 'bg-yellow-200 text-yellow-800';
+                    } else if (status === 'preparing') {
+                        newStatus = 'ready';
+                        newStatusText = 'Ready';
+                        newStatusClass = 'bg-green-200 text-green-800';
+                    } else if (status === 'ready') {
+                        newStatus = 'delivered';
+                        newStatusText = 'Delivered';
+                        newStatusClass = 'bg-blue-200 text-blue-800';
+                        
+                        // Change actions for delivered orders
+                        row.querySelector('td:last-child').innerHTML = `
+                            <div class="flex space-x-2">
+                                <button class="text-blue-500 hover:text-blue-700 view-order-btn"><i class="bi bi-eye"></i></button>
+                                <button class="text-gray-500 hover:text-gray-700 print-bill-btn"><i class="bi bi-printer"></i></button>
+                            </div>
+                        `;
+                        
+                        // Add event listener to new print button
+                        const printBtn = row.querySelector('.print-bill-btn');
+                        if (printBtn) {
+                            printBtn.addEventListener('click', function() {
+                                showNotification(`Printing bill for ${orderId}...`, 'success');
+                            });
+                        }
+                    }
+                    
+                    // Update row status
+                    if (newStatus) {
+                        row.setAttribute('data-status', newStatus);
+                        statusCell.innerHTML = `<span class="${newStatusClass} px-2 py-1 rounded text-sm">${newStatusText}</span>`;
+                        
+                        showNotification(`Order ${orderId} status changed to ${newStatusText}`, 'success');
+                        
+                        // Update pending orders count if applicable
+                        if (status === 'pending') {
+                            const pendingOrdersElement = document.querySelector('.bg-purple-50 .text-3xl');
+                            if (pendingOrdersElement) {
+                                pendingOrdersElement.textContent = Math.max(0, parseInt(pendingOrdersElement.textContent) - 1);
+                            }
+                        }
+                    }
+                });
+            }
+            
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', function() {
+                    if (!confirm('Are you sure you want to cancel this order?')) return;
+                    
+                    const orderId = row.querySelector('td:first-child').textContent;
+                    
+                    // Remove the row
+                    row.remove();
+                    
+                    showNotification(`Order ${orderId} has been cancelled`, 'success');
+                    
+                    // Update order count
+                    updateOrderCount();
+                    
+                    // Update pending orders count if applicable
+                    if (row.getAttribute('data-status') === 'pending') {
+                        const pendingOrdersElement = document.querySelector('.bg-purple-50 .text-3xl');
+                        if (pendingOrdersElement) {
+                            pendingOrdersElement.textContent = Math.max(0, parseInt(pendingOrdersElement.textContent) - 1);
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Apply event listeners to initial orders
+        document.querySelectorAll('.order-row').forEach(row => {
+            addOrderEventListeners(row);
+        });
+        
+        // Menu page
+        function addMenuItemEventListeners(row) {
+            const editBtn = row.querySelector('.edit-menu-item');
+            const deleteBtn = row.querySelector('.delete-menu-item');
+            const toggle = row.querySelector('.menu-item-toggle');
+            
+            if (editBtn) {
+                editBtn.addEventListener('click', function() {
+                    const name = row.querySelector('.font-medium').textContent;
+                    const category = row.querySelector('td:nth-child(2)').textContent;
+                    
+                    showNotification(`Editing menu item: ${name} (${category})`, 'success');
+                    
+                    // In a real app, would populate and show the edit form
+                });
+            }
+            
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', function() {
+                    if (!confirm('Are you sure you want to delete this menu item?')) return;
+                    
+                    const name = row.querySelector('.font-medium').textContent;
+                    
+                    // Remove the row
+                    row.remove();
+                    
+                    showNotification(`${name} has been removed from the menu`, 'success');
+                    
+                    // Update menu item count
+                    updateMenuItemCount();
+                });
+            }
+            
+            if (toggle) {
+                toggle.addEventListener('change', function() {
+                    const name = row.querySelector('.font-medium').textContent;
+                    const available = this.checked;
+                    
+                    showNotification(`${name} is now ${available ? 'available' : 'unavailable'} for ordering`, 'success');
+                });
+            }
+        }
+        
+        // Apply event listeners to initial menu items
+        document.querySelectorAll('.menu-item').forEach(row => {
+            addMenuItemEventListeners(row);
+        });
+        
+        // Reservations page
+        function addReservationEventListeners(row) {
+            const editBtn = row.querySelector('.edit-reservation-btn');
+            const confirmBtn = row.querySelector('.confirm-reservation-btn');
+            const cancelBtn = row.querySelector('.cancel-reservation-btn');
+            
+            if (editBtn) {
+                editBtn.addEventListener('click', function() {
+                    const name = row.querySelector('td:first-child').textContent;
+                    const time = row.querySelector('td:nth-child(2)').textContent;
+                    
+                    showNotification(`Editing reservation for ${name} at ${time}`, 'success');
+                    
+                    // In a real app, would populate and show the edit form
+                });
+            }
+            
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', function() {
+                    const status = row.getAttribute('data-status');
+                    if (status === 'cancelled' || status === 'confirmed') return;
+                    
+                    const name = row.querySelector('td:first-child').textContent;
+                    const statusCell = row.querySelector('td:nth-child(5)');
+                    
+                    // Update row status
+                    row.setAttribute('data-status', 'confirmed');
+                    statusCell.innerHTML = `<span class="bg-green-200 text-green-800 px-2 py-1 rounded text-sm">Confirmed</span>`;
+                    
+                    showNotification(`Reservation for ${name} has been confirmed`, 'success');
+                });
+            }
+            
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', function() {
+                    const status = row.getAttribute('data-status');
+                    if (status === 'cancelled') return;
+                    
+                    if (!confirm('Are you sure you want to cancel this reservation?')) return;
+                    
+                    const name = row.querySelector('td:first-child').textContent;
+                    const tableCell = row.querySelector('td:nth-child(4)');
+                    const statusCell = row.querySelector('td:nth-child(5)');
+                    const tableNumber = tableCell.textContent.replace('Table ', '');
+                    
+                    // Update row status
+                    row.setAttribute('data-status', 'cancelled');
+                    statusCell.innerHTML = `<span class="bg-red-200 text-red-800 px-2 py-1 rounded text-sm">Cancelled</span>`;
+                    
+                    // Disable action buttons
+                    const actionsCell = row.querySelector('td:last-child');
+                    actionsCell.innerHTML = `
+                        <div class="flex space-x-2">
+                            <button class="text-blue-500 hover:text-blue-700 edit-reservation-btn"><i class="bi bi-pencil"></i></button>
+                            <button class="text-gray-400 cursor-not-allowed"><i class="bi bi-check2"></i></button>
+                            <button class="text-gray-400 cursor-not-allowed"><i class="bi bi-x"></i></button>
+                        </div>
+                    `;
+                    
+                    // Add event listener to new edit button
+                    const newEditBtn = row.querySelector('.edit-reservation-btn');
+                    if (newEditBtn) {
+                        newEditBtn.addEventListener('click', function() {
+                            showNotification(`Cannot edit cancelled reservation for ${name}`, 'error');
+                        });
+                    }
+                    
+                    // Update table status
+                    updateTableStatus(tableNumber, 'available');
+                    
+                    showNotification(`Reservation for ${name} has been cancelled`, 'success');
+                });
+            }
+        }
+        
+        // Apply event listeners to initial reservations
+        document.querySelectorAll('.reservation-row').forEach(row => {
+            addReservationEventListeners(row);
+        });
+        
+        // Table items click events
+        document.querySelectorAll('.table-item').forEach(table => {
+            table.addEventListener('click', function() {
+                const tableNumber = this.getAttribute('data-table');
+                const status = this.getAttribute('data-status');
+                
+                if (status === 'available') {
+                    // Open reservation modal with this table pre-selected
+                    selectedTableForReservation = tableNumber;
+                    document.getElementById('newReservationBtn').click();
+                    showNotification(`Table ${tableNumber} selected for reservation`, 'success');
+                } else if (status === 'reserved') {
+                    showNotification(`Table ${tableNumber} is already reserved`, 'error');
+                } else if (status === 'occupied') {
+                    showNotification(`Table ${tableNumber} is currently occupied`, 'error');
+                }
+            });
+        });
+        
+        // Staff page
+        function addStaffEventListeners(row) {
+            const editBtn = row.querySelector('.edit-staff-btn');
+            const deleteBtn = row.querySelector('.delete-staff-btn');
+            
+            if (editBtn) {
+                editBtn.addEventListener('click', function() {
+                    const name = row.querySelector('.font-medium').textContent;
+                    const role = row.querySelector('td:nth-child(2)').textContent;
+                    
+                    showNotification(`Editing staff: ${name} (${role})`, 'success');
+                    
+                    // In a real app, would populate and show the edit form
+                });
+            }
+            
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', function() {
+                    if (!confirm('Are you sure you want to delete this staff member?')) return;
+                    
+                    const name = row.querySelector('.font-medium').textContent;
+                    
+                    // Remove the row
+                    row.remove();
+                    
+                    showNotification(`${name} has been removed from staff`, 'success');
+                    
+                    // Update staff count
+                    updateStaffCount();
+                });
+            }
+        }
+        
+        // Apply event listeners to initial staff
+        document.querySelectorAll('.staff-row').forEach(row => {
+            addStaffEventListeners(row);
+        });
+        
+        // Schedule cells click events
+        document.querySelectorAll('.schedule-cell').forEach(cell => {
+            cell.addEventListener('click', function() {
+                const day = this.getAttribute('data-day');
+                const staff = this.getAttribute('data-staff');
+                const isWorking = this.classList.contains('bg-blue-100');
+                const isLeave = this.classList.contains('bg-red-100');
+                
+                // Toggle status
+                if (isWorking) {
+                    this.classList.remove('bg-blue-100');
+                    this.textContent = '-';
+                    showNotification(`Schedule updated: Staff is off on ${day.toUpperCase()}`, 'success');
+                } else if (isLeave) {
+                    this.classList.remove('bg-red-100');
+                    this.classList.add('bg-blue-100');
+                    this.textContent = '✓';
+                    showNotification(`Schedule updated: Staff is working on ${day.toUpperCase()}`, 'success');
+                } else {
+                    this.classList.add('bg-blue-100');
+                    this.textContent = '✓';
+                    showNotification(`Schedule updated: Staff is working on ${day.toUpperCase()}`, 'success');
+                }
+            });
+        });
+        
+        // Color options click events
+        document.querySelectorAll('.color-option').forEach(color => {
+            color.addEventListener('click', function() {
+                // Remove ring from all options
+                document.querySelectorAll('.color-option').forEach(opt => {
+                    opt.classList.remove('ring-2', 'ring-offset-2');
+                });
+                
+                // Add ring to selected option
+                this.classList.add('ring-2', 'ring-offset-2');
+                
+                const colorName = this.getAttribute('data-color');
+                showNotification(`Theme color set to ${colorName}`, 'success');
+            });
+        });
+        
+        // Settings buttons
+        document.getElementById('applyThemeBtn')?.addEventListener('click', function() {
+            showNotification('Theme settings applied successfully', 'success');
+        });
+        
+        document.getElementById('saveSystemSettingsBtn')?.addEventListener('click', function() {
+            showNotification('System settings saved successfully', 'success');
+        });
+        
+        document.getElementById('saveProfileBtn')?.addEventListener('click', function() {
+            showNotification('Restaurant profile updated successfully', 'success');
+        });
+        
+        document.getElementById('saveHoursBtn')?.addEventListener('click', function() {
+            showNotification('Business hours updated successfully', 'success');
+        });
+        
+        document.getElementById('changePasswordBtn')?.addEventListener('click', function() {
+            showNotification('Password change functionality will be implemented soon', 'success');
+        });
+        
+        document.getElementById('twoFactorBtn')?.addEventListener('click', function() {
+            showNotification('Two-factor authentication will be implemented soon', 'success');
+        });
+        
+        document.getElementById('manageUsersBtn')?.addEventListener('click', function() {
+            showNotification('User management will be implemented soon', 'success');
+        });
+        
+        document.getElementById('privacySettingsBtn')?.addEventListener('click', function() {
+            showNotification('Privacy settings will be implemented soon', 'success');
+        });
+        
+        // Calendar days click events
+        document.querySelectorAll('.calendar-day').forEach(day => {
+            day.addEventListener('click', function() {
+                // Remove highlight from current day
+                document.getElementById('currentDay')?.classList.remove('bg-blue-100');
+                
+                // Add highlight to clicked day
+                this.classList.add('bg-blue-100', 'rounded');
+                this.id = 'currentDay';
+                
+                const dayNumber = this.textContent.trim().split('\n')[0];
+                showNotification(`Viewing reservations for day ${dayNumber}`, 'success');
+            });
+        });
+        
+        document.getElementById('prevMonth')?.addEventListener('click', function() {
+            showNotification('Previous month functionality will be implemented soon', 'success');
+        });
+        
+        document.getElementById('nextMonth')?.addEventListener('click', function() {
+            showNotification('Next month functionality will be implemented soon', 'success');
+        });
+        
+        // Filter for orders
+        document.getElementById('orderFilterSelect')?.addEventListener('change', function() {
+            const status = this.value;
+            const rows = document.querySelectorAll('.order-row');
+            
+            rows.forEach(row => {
+                if (status === 'all' || row.getAttribute('data-status') === status) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            updateVisibleOrderCount();
+        });
+        
+        // Filter for menu items
+        document.getElementById('menuCategoryFilter')?.addEventListener('change', function() {
+            const category = this.value;
+            const rows = document.querySelectorAll('.menu-item');
+            
+            rows.forEach(row => {
+                if (category === 'all' || row.getAttribute('data-category') === category) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            updateVisibleMenuCount();
+        });
+        
+        // Filter for staff
+        document.getElementById('staffRoleFilter')?.addEventListener('change', function() {
+            const role = this.value;
+            const rows = document.querySelectorAll('.staff-row');
+            
+            rows.forEach(row => {
+                if (role === 'all' || row.getAttribute('data-role') === role) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            updateVisibleStaffCount();
+        });
+        
+        // Process all orders button
+        document.getElementById('processAllOrdersBtn')?.addEventListener('click', function() {
+            const pendingOrders = document.querySelectorAll('.order-row[data-status="pending"]');
+            
+            if (pendingOrders.length === 0) {
+                showNotification('No pending orders to process', 'error');
+                return;
+            }
+            
+            if (!confirm(`Process all ${pendingOrders.length} pending orders?`)) return;
+            
+            pendingOrders.forEach(row => {
+                const statusCell = row.querySelector('td:nth-child(5)');
+                
+                // Update row status
+                row.setAttribute('data-status', 'preparing');
+                statusCell.innerHTML = `<span class="bg-yellow-200 text-yellow-800 px-2 py-1 rounded text-sm">Preparing</span>`;
+            });
+            
+            // Update pending orders count
+            const pendingOrdersElement = document.querySelector('.bg-purple-50 .text-3xl');
+            if (pendingOrdersElement) {
+                pendingOrdersElement.textContent = '0';
+            }
+            
+            showNotification(`Processed ${pendingOrders.length} pending orders`, 'success');
+        });
+        
+        // View full calendar button
+        document.getElementById('viewFullCalendarBtn')?.addEventListener('click', function() {
+            showNotification('Full calendar view will be implemented soon', 'success');
+        });
+        
+        // Edit schedule button
+        document.getElementById('editScheduleBtn')?.addEventListener('click', function() {
+            showNotification('Click on schedule cells to toggle staff working status', 'success');
+        });
+        
+        // Generate report button
+        document.getElementById('generateReportBtn')?.addEventListener('click', function() {
+            showLoadingNotification('Generating staff performance report...');
+            
+            setTimeout(() => {
+                showNotification('Staff performance report has been generated and sent to your email', 'success');
+            }, 2000);
+        });
+        
+        // Add category button
+        document.getElementById('addCategoryBtn')?.addEventListener('click', function() {
+            const categoryName = prompt('Enter new category name:');
+            
+            if (!categoryName) return;
+            
+            const categoriesList = this.closest('div.space-y-3');
+            const newCategory = document.createElement('div');
+            newCategory.className = 'flex justify-between items-center p-2 border-b';
+            newCategory.innerHTML = `
+                <span>${categoryName}</span>
+                <button class="edit-category text-blue-500 hover:text-blue-700"><i class="bi bi-pencil"></i></button>
+            `;
+            
+            categoriesList.insertBefore(newCategory, this.parentElement);
+            
+            // Add event listener to new edit button
+            const editBtn = newCategory.querySelector('.edit-category');
+            if (editBtn) {
+                editBtn.addEventListener('click', function() {
+                    const newName = prompt('Edit category name:', categoryName);
+                    if (newName) {
+                        this.parentElement.querySelector('span').textContent = newName;
+                        showNotification(`Category renamed to ${newName}`, 'success');
+                    }
+                });
+            }
+            
+            showNotification(`Category ${categoryName} added successfully`, 'success');
+        });
+        
+        // Add event listeners to existing edit category buttons
+        document.querySelectorAll('.edit-category').forEach(button => {
+            button.addEventListener('click', function() {
+                const categoryName = this.parentElement.querySelector('span').textContent;
+                const newName = prompt('Edit category name:', categoryName);
+                if (newName) {
+                    this.parentElement.querySelector('span').textContent = newName;
+                    showNotification(`Category renamed to ${newName}`, 'success');
+                }
+            });
+        });
+        
+        // Update specials button
+        document.getElementById('updateSpecialsBtn')?.addEventListener('click', function() {
+            showNotification('Specials updated successfully', 'success');
+        });
+        
+        // Counter functions
+        function updateVisibleOrderCount() {
+            const visibleOrders = document.querySelectorAll('.order-row:not([style*="display: none"])').length;
+            const totalOrders = document.querySelectorAll('.order-row').length;
+            
+            document.getElementById('visibleOrderCount').textContent = visibleOrders;
+            document.getElementById('totalOrderCount').textContent = totalOrders;
+        }
+        
+        function updateOrderCount() {
+            const totalOrders = document.querySelectorAll('.order-row').length;
+            document.getElementById('totalOrderCount').textContent = totalOrders;
+            updateVisibleOrderCount();
+        }
+        
+        function updateVisibleMenuCount() {
+            const visibleItems = document.querySelectorAll('.menu-item:not([style*="display: none"])').length;
+            const totalItems = document.querySelectorAll('.menu-item').length;
+            
+            document.getElementById('visibleMenuCount').textContent = visibleItems;
+            document.getElementById('totalMenuCount').textContent = totalItems;
+        }
+        
+        function updateMenuItemCount() {
+            const totalItems = document.querySelectorAll('.menu-item').length;
+            document.getElementById('totalMenuCount').textContent = totalItems;
+            updateVisibleMenuCount();
+        }
+        
+        function updateVisibleStaffCount() {
+            const visibleStaff = document.querySelectorAll('.staff-row:not([style*="display: none"])').length;
+            const totalStaff = document.querySelectorAll('.staff-row').length;
+            
+            document.getElementById('visibleStaffCount').textContent = visibleStaff;
+            document.getElementById('totalStaffCount').textContent = totalStaff;
+        }
+        
+        function updateStaffCount() {
+            const totalStaff = document.querySelectorAll('.staff-row').length;
+            document.getElementById('totalStaffCount').textContent = totalStaff;
+            updateVisibleStaffCount();
+        }
+        
+        // Initialize counters
+        updateOrderCount();
+        updateMenuItemCount();
+        updateStaffCount();
+        updateCartCount();
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
